@@ -7,6 +7,7 @@ import os
 from typing import Optional, Dict, List
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.language_models.chat_models import BaseChatModel
+from app.utils.empresa_config import get_empresa_config
 
 # Importar OpenAI
 try:
@@ -61,7 +62,8 @@ class LangChainAgent:
         self, 
         provider: str = "openai",
         model_name: str = "gpt-4o-mini", 
-        temperature: float = 0.7
+        temperature: float = 0.7,
+        empresa_config_path: Optional[str] = None
     ):
         """
         Inicializa el agente LangChain.
@@ -70,11 +72,13 @@ class LangChainAgent:
             provider: Proveedor de IA ("openai" o "gemini")
             model_name: Nombre del modelo a usar
             temperature: Temperatura para la generación (0.0 a 1.0)
+            empresa_config_path: Ruta opcional al archivo de configuración de la empresa
         """
         self.provider = provider.lower()
         self.model_name = model_name
         self.temperature = temperature
         self.reference_texts: List[str] = []
+        self.empresa_config = get_empresa_config(empresa_config_path)
         
         # Validar proveedor
         if self.provider not in ["openai", "gemini"]:
@@ -117,6 +121,14 @@ class LangChainAgent:
         for i, text in enumerate(self.reference_texts[:3], 1):  # Máximo 3 textos
             context += f"\nEjemplo {i}:\n{text}\n"
         return context
+    
+    def _get_empresa_context(self) -> str:
+        """Genera contexto de la empresa desde la configuración."""
+        contexto_completo = self.empresa_config.get_contexto_completo()
+        if not contexto_completo:
+            return ""
+        
+        return f"\n\n--- CONTEXTO Y VALORES EMPRESARIALES ---\n{contexto_completo}\n\nIMPORTANTE: El texto generado debe estar alineado con estos valores, misión, visión y contexto empresarial. Usa el tono de comunicación especificado.\n"
     
     def _invoke_llm(self, messages: List, use_callback: bool = True) -> Dict[str, any]:
         """
@@ -173,25 +185,31 @@ class LangChainAgent:
             Dict con el texto generado y metadata
         """
         style_context = self._get_style_context()
+        empresa_context = self._get_empresa_context()
         
         prompt = f"""Eres un asistente experto en comunicación empresarial. 
 Tu tarea es generar un texto profesional, claro y coherente sobre el siguiente tema:
 
 TEMA: {tema}
 
+{empresa_context}
+
 REQUISITOS:
 - El texto debe tener aproximadamente {max_palabras} palabras
 - Debe ser profesional pero cercano
 - Debe mantener un tono empresarial apropiado
 - Estructura clara con párrafos bien organizados
+- Debe reflejar y alinearse con los valores, misión y visión proporcionados
 {instrucciones_adicionales if instrucciones_adicionales else ''}
 
 {style_context}
 
-Por favor, genera el texto completo:"""
+Por favor, genera el texto completo asegurándote de que esté alineado con la identidad y valores proporcionados:"""
+        
+        system_content = "Eres un experto en comunicación empresarial y redacción profesional. Generas textos que reflejan los valores, misión y cultura empresarial de manera natural y coherente."
         
         messages = [
-            SystemMessage(content="Eres un experto en comunicación empresarial y redacción profesional."),
+            SystemMessage(content=system_content),
             HumanMessage(content=prompt)
         ]
         
@@ -213,6 +231,7 @@ Por favor, genera el texto completo:"""
             Dict con el texto corregido y metadata
         """
         style_context = self._get_style_context()
+        empresa_context = self._get_empresa_context()
         
         prompt = f"""Eres un editor experto en comunicación empresarial.
 Tu tarea es corregir y mejorar el siguiente texto, mejorando:
@@ -221,6 +240,9 @@ Tu tarea es corregir y mejorar el siguiente texto, mejorando:
 - Estilo profesional
 - Estructura y organización
 - Coherencia
+- Alineación con los valores y contexto proporcionados
+
+{empresa_context}
 
 TEXTO ORIGINAL:
 {texto}
@@ -229,10 +251,12 @@ TEXTO ORIGINAL:
 
 {style_context}
 
-Por favor, proporciona el texto corregido y mejorado:"""
+Por favor, proporciona el texto corregido y mejorado, asegurándote de que esté alineado con los valores proporcionados:"""
+        
+        system_content = "Eres un editor experto en comunicación empresarial y redacción profesional. Mejoras textos manteniendo la alineación con los valores y la identidad empresarial de manera natural."
         
         messages = [
-            SystemMessage(content="Eres un editor experto en comunicación empresarial y redacción profesional."),
+            SystemMessage(content=system_content),
             HumanMessage(content=prompt)
         ]
         
@@ -255,8 +279,12 @@ Por favor, proporciona el texto corregido y mejorado:"""
         Returns:
             Dict con el texto resumido y metadata
         """
+        empresa_context = self._get_empresa_context()
+        
         prompt = f"""Eres un experto en comunicación empresarial.
 Tu tarea es crear un resumen conciso y profesional del siguiente texto:
+
+{empresa_context}
 
 TEXTO ORIGINAL:
 {texto}
@@ -265,13 +293,15 @@ REQUISITOS:
 - El resumen debe tener aproximadamente {max_palabras} palabras
 - Debe mantener las ideas principales y el mensaje clave
 - Debe ser claro y profesional
-- Mantener el tono original
+- Mantener el tono original y alineado con la identidad proporcionada
 {instrucciones_adicionales if instrucciones_adicionales else ''}
 
 Por favor, proporciona el resumen:"""
         
+        system_content = "Eres un experto en comunicación empresarial y creación de resúmenes profesionales."
+        
         messages = [
-            SystemMessage(content="Eres un experto en comunicación empresarial y creación de resúmenes profesionales."),
+            SystemMessage(content=system_content),
             HumanMessage(content=prompt)
         ]
         

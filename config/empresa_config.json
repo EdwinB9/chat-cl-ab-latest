@@ -1,0 +1,70 @@
+{
+  "nombre_empresa": "Casa Limpia",
+  "sector": "Servicios de Limpieza y Mantenimiento",
+  "descripcion": "Casa Limpia es una empresa líder en servicios de limpieza y mantenimiento, comprometida con la excelencia, la sostenibilidad y el bienestar de nuestros clientes y colaboradores.",
+  
+  "mision": "Proporcionar servicios de limpieza y mantenimiento de la más alta calidad, creando espacios limpios, seguros y saludables que contribuyan al bienestar de las personas y al cuidado del medio ambiente.",
+  
+  "vision": "Ser la empresa de referencia en servicios de limpieza y mantenimiento, reconocida por nuestra excelencia operativa, compromiso con la sostenibilidad y el desarrollo integral de nuestro equipo humano.",
+  
+  "valores": [
+    "Excelencia: Buscamos la perfección en cada servicio que ofrecemos",
+    "Compromiso: Dedicación total hacia nuestros clientes y colaboradores",
+    "Sostenibilidad: Cuidado del medio ambiente y uso responsable de recursos",
+    "Integridad: Transparencia y honestidad en todas nuestras acciones",
+    "Trabajo en equipo: Colaboración y respeto mutuo entre todos los miembros",
+    "Innovación: Búsqueda constante de mejoras y nuevas soluciones",
+    "Responsabilidad social: Contribución positiva a la comunidad"
+  ],
+  
+  "tono_comunicacion": {
+    "estilo": "Profesional pero cercano, cálido y humano",
+    "caracteristicas": [
+      "Uso de lenguaje claro y directo",
+      "Tono positivo y motivador",
+      "Reconocimiento del trabajo de los colaboradores",
+      "Enfoque en el bienestar y la seguridad",
+      "Mensajes que inspiran confianza"
+    ]
+  },
+  
+  "contexto_adicional": {
+    "servicios_principales": [
+      "Limpieza residencial",
+      "Limpieza comercial e institucional",
+      "Limpieza industrial",
+      "Mantenimiento de espacios",
+      "Servicios especializados de desinfección"
+    ],
+    "puntos_destacados": [
+      "Más de [X] años de experiencia en el sector",
+      "Equipo altamente capacitado y comprometido",
+      "Uso de productos ecológicos y sostenibles",
+      "Compromiso con la seguridad laboral",
+      "Atención personalizada a cada cliente"
+    ],
+    "enfoque": "Casa Limpia se enfoca en crear valor no solo a través de servicios de limpieza excepcionales, sino también mediante el desarrollo de relaciones duraderas con clientes y colaboradores, el cuidado del medio ambiente y la contribución positiva a la comunidad."
+  },
+  
+  "palabras_clave": [
+    "limpieza",
+    "mantenimiento",
+    "excelencia",
+    "sostenibilidad",
+    "compromiso",
+    "bienestar",
+    "seguridad",
+    "calidad",
+    "profesionalismo",
+    "confianza"
+  ],
+  
+  "mensajes_frecuentes": [
+    "Reconocemos y valoramos el trabajo de nuestros colaboradores",
+    "La seguridad y el bienestar son nuestra prioridad",
+    "Comprometidos con prácticas sostenibles y respetuosas del medio ambiente",
+    "Excelencia en cada servicio que ofrecemos",
+    "Construimos relaciones basadas en la confianza y el compromiso"
+  ]
+}
+
