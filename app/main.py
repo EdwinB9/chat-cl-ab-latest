@@ -4,8 +4,16 @@ Aplicación principal de Streamlit para el Chatbot Empresarial.
 
 import streamlit as st
 import os
+import sys
+from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
+
+# Agregar el directorio raíz del proyecto al path de Python
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 from app.utils import LangChainAgent, IOManager, FeedbackManager, contar_palabras
 from app.components import render_sidebar, render_result_display, render_file_uploader
 

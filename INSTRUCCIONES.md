@@ -48,11 +48,22 @@ O puedes ingresarlas directamente en la aplicación cuando la ejecutes (se pedir
 
 ### Ejecutar la Aplicación
 
+**Importante**: Asegúrate de estar en el directorio raíz del proyecto al ejecutar el comando.
+
 ```bash
+# Desde el directorio raíz del proyecto
 streamlit run app/main.py
 ```
 
+O usa los scripts proporcionados:
+- **Windows**: Ejecuta `run.bat`
+- **Linux/Mac**: Ejecuta `./run.sh` (primero dale permisos: `chmod +x run.sh`)
+
 La aplicación se abrirá automáticamente en tu navegador en `http://localhost:8501`
+
+**Nota**: Si encuentras el error `ModuleNotFoundError: No module named 'app'`, asegúrate de:
+1. Estar en el directorio raíz del proyecto (donde está el archivo `requirements.txt`)
+2. Tener todas las dependencias instaladas: `pip install -r requirements.txt`
 
 ### Funcionalidades
 
