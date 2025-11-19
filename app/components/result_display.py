@@ -4,6 +4,7 @@ Componente para mostrar resultados y gestionar feedback.
 
 import streamlit as st
 from typing import Dict, Optional, Callable
+from app.components.help_modal import titulo_con_ayuda, AYUDA_FEEDBACK
 
 
 def render_result_display(
@@ -24,60 +25,185 @@ def render_result_display(
     if not resultado:
         return
     
-    st.subheader(f"📝 Resultado ({accion.capitalize()})")
+    # Colores Casa Limpia (modo claro)
+    color_titulo = "#1a237e"  # Azul oscuro profundo Casa Limpia
+    bg_gradiente = "rgba(0, 172, 193, 0.1)"  # Turquesa Casa Limpia
+    bg_gradiente_end = "rgba(0, 172, 193, 0.05)"
+    border_color = "#00acc1"  # Turquesa principal
     
-    # Mostrar resultado en un área de texto editable
-    texto_editado = st.text_area(
-        "Texto generado:",
-        value=resultado,
-        height=300,
-        key=f"resultado_{resultado_id}" if resultado_id else "resultado"
+    # Título del resultado con mejor diseño (adaptado al tema Casa Limpia)
+    st.markdown(
+        f"""
+        <div style="background: linear-gradient(135deg, {bg_gradiente} 0%, {bg_gradiente_end} 100%); 
+                    border-left: 4px solid {border_color}; 
+                    border-radius: 0.5rem; 
+                    padding: 1rem 1.5rem; 
+                    margin-bottom: 1.5rem;
+                    animation: fadeIn 0.3s ease-out;">
+            <h2 style="margin: 0; color: {color_titulo}; font-size: 1.5rem;">
+                📝 Resultado ({accion.capitalize()})
+            </h2>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
     
-    # Estadísticas del texto
+    # Contenedor para el resultado con mejor diseño (modo claro)
+    bg_card = "#ffffff"
+    border_card = "#b0bec5"
+    shadow_card = "0 4px 6px -1px rgba(0, 172, 193, 0.15)"
+    
+    # Convertir el resultado a HTML si es necesario y envolverlo en el contenedor
+    import markdown as md
+    resultado_html = md.markdown(resultado, extensions=['nl2br', 'fenced_code'])
+    
+    st.markdown(
+        f"""
+        <div style="background: {bg_card}; 
+                    border: 1px solid {border_card}; 
+                    border-radius: 0.75rem; 
+                    padding: 1.5rem; 
+                    box-shadow: {shadow_card};
+                    margin-bottom: 1.5rem;
+                    animation: fadeIn 0.4s ease-out;">
+            {resultado_html}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # Usar el resultado original para estadísticas y descargas
+    texto_editado = resultado
+    
+    # Estadísticas del texto con mejor diseño
     from app.utils.text_tools import analizar_texto
     stats = analizar_texto(texto_editado)
     
+    # Colores Casa Limpia para estadísticas (modo claro)
+    bg_stats = "rgba(0, 172, 193, 0.05)"  # Turquesa Casa Limpia
+    bg_stats_end = "rgba(0, 172, 193, 0.02)"
+    
+    # Aplicar estilos directamente a las métricas usando CSS con selector específico
+    stats_container_key = f"stats_container_{resultado_id or 'default'}"
+    
+    # Primero crear las métricas
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Palabras", stats["palabras"])
+        st.metric("📝 Palabras", stats["palabras"])
     with col2:
-        st.metric("Caracteres", stats["caracteres"])
+        st.metric("🔤 Caracteres", stats["caracteres"])
     with col3:
-        st.metric("Oraciones", stats["oraciones"])
+        st.metric("📄 Oraciones", stats["oraciones"])
     with col4:
-        st.metric("Párrafos", stats["paragrafos"])
+        st.metric("📑 Párrafos", stats["paragrafos"])
+    
+    # Aplicar estilos después usando CSS que selecciona el contenedor padre de las métricas
+    st.markdown(
+        f"""
+        <style>
+        [data-testid="stMetric"]:first-of-type {{
+            margin-top: 0;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
     
     st.divider()
     
     # Opciones de feedback
     if resultado_id and on_feedback:
-        st.subheader("💬 Feedback")
+        titulo_con_ayuda("💬 Feedback", AYUDA_FEEDBACK, "feedback", nivel="subheader")
         
-        col1, col2 = st.columns(2)
+        # Verificar si el usuario quiere cambiar el feedback
+        cambiar_feedback_key = f"cambiar_feedback_{resultado_id}"
+        quiere_cambiar = st.session_state.get(cambiar_feedback_key, False)
         
-        with col1:
-            if st.button("👍 Me gusta", use_container_width=True, type="primary"):
-                comentario = st.session_state.get(f"comentario_{resultado_id}", "")
-                on_feedback(resultado_id, aprobado=True, comentario=comentario)
-                st.success("¡Feedback registrado! ✅")
+        # Verificar si ya existe feedback (siempre obtenerlo para pre-llenar comentario si es necesario)
+        feedback_existente = None
+        if resultado_id:
+            # Intentar obtener feedback desde io_manager
+            try:
+                from app.utils.io_manager import IOManager
+                io_manager = IOManager()
+                feedback_existente = io_manager.obtener_feedback_resultado(resultado_id)
+            except:
+                pass
+        
+        # Si ya hay feedback Y no se quiere cambiar, mostrarlo
+        if feedback_existente and not quiere_cambiar:
+            aprobado = feedback_existente.get("aprobado", None)
+            comentario_existente = feedback_existente.get("comentario", "")
+            
+            if aprobado is True:
+                st.success("✅ **Aprobado** - Este resultado ha sido marcado como aprobado.")
+            elif aprobado is False:
+                st.error("❌ **Rechazado** - Este resultado ha sido movido a rechazados.")
+            
+            if comentario_existente:
+                st.info(f"💬 **Comentario:** {comentario_existente}")
+            
+            # Permitir cambiar el feedback
+            if st.button("🔄 Cambiar Feedback", use_container_width=True, key=f"btn_cambiar_{resultado_id}"):
+                # Activar el flag para cambiar feedback
+                st.session_state[cambiar_feedback_key] = True
                 st.rerun()
-        
-        with col2:
-            if st.button("👎 No me gusta", use_container_width=True):
-                comentario = st.session_state.get(f"comentario_{resultado_id}", "")
-                on_feedback(resultado_id, aprobado=False, comentario=comentario)
-                st.info("Resultado movido a rechazados.")
-                st.rerun()
-        
-        # Comentario opcional
-        comentario = st.text_area(
-            "Comentario (opcional):",
-            key=f"comentario_{resultado_id}",
-            placeholder="Escribe tu comentario sobre el resultado..."
-        )
+        else:
+            # No hay feedback o se quiere cambiar, mostrar opciones para dar feedback
+            # Si se está cambiando, mostrar mensaje
+            if quiere_cambiar and feedback_existente:
+                st.info("🔄 Modificando feedback...")
+                if st.button("❌ Cancelar", use_container_width=True, key=f"cancelar_{resultado_id}"):
+                    st.session_state[cambiar_feedback_key] = False
+                    st.rerun()
+            
+            col1, col2 = st.columns(2)
+            
+            # Comentario opcional (mostrarlo antes de los botones)
+            # Si hay feedback existente, pre-llenar el comentario
+            comentario_default = ""
+            if feedback_existente and quiere_cambiar:
+                comentario_default = feedback_existente.get("comentario", "")
+            
+            comentario = st.text_area(
+                "Comentario (opcional):",
+                value=comentario_default,
+                key=f"comentario_{resultado_id}",
+                placeholder="Escribe tu comentario sobre el resultado...",
+                help="Puedes agregar un comentario antes de dar tu feedback"
+            )
+            
+            with col1:
+                if st.button("👍 Me gusta", use_container_width=True, type="primary", key=f"me_gusta_{resultado_id}"):
+                    # Guardar en session_state para evitar pérdida de estado
+                    st.session_state[f"feedback_guardado_{resultado_id}"] = {
+                        "aprobado": True,
+                        "comentario": comentario
+                    }
+                    on_feedback(resultado_id, aprobado=True, comentario=comentario)
+                    # Limpiar el flag de cambiar feedback
+                    if cambiar_feedback_key in st.session_state:
+                        del st.session_state[cambiar_feedback_key]
+                    st.success("¡Feedback registrado! ✅")
+                    # Usar st.rerun() pero el estado ya está guardado
+                    st.rerun()
+            
+            with col2:
+                if st.button("👎 No me gusta", use_container_width=True, key=f"no_me_gusta_{resultado_id}"):
+                    # Guardar en session_state para evitar pérdida de estado
+                    st.session_state[f"feedback_guardado_{resultado_id}"] = {
+                        "aprobado": False,
+                        "comentario": comentario
+                    }
+                    on_feedback(resultado_id, aprobado=False, comentario=comentario)
+                    # Limpiar el flag de cambiar feedback
+                    if cambiar_feedback_key in st.session_state:
+                        del st.session_state[cambiar_feedback_key]
+                    st.info("Resultado movido a rechazados. Puedes verlo en el historial.")
+                    # No limpiar el resultado inmediatamente, dejar que se muestre el estado
+                    st.rerun()
     
-    # Botones de descarga
+    # Botones de descarga (el subheader se adapta automáticamente al tema vía CSS)
     st.divider()
     st.subheader("💾 Descargar")
     

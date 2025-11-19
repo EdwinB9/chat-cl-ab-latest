@@ -9,7 +9,8 @@ from app.utils.text_tools import (
     contar_caracteres,
     limpiar_texto,
     analizar_texto,
-    formatear_texto
+    formatear_texto,
+    generar_titulo_resumido
 )
 
 __all__ = [
@@ -22,6 +23,7 @@ __all__ = [
     "contar_caracteres",
     "limpiar_texto",
     "analizar_texto",
-    "formatear_texto"
+    "formatear_texto",
+    "generar_titulo_resumido"
 ]
 

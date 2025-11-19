@@ -7,6 +7,7 @@ import os
 import sys
 from pathlib import Path
 from datetime import datetime
+from typing import Dict
 from dotenv import load_dotenv
 
 # Agregar el directorio raíz del proyecto al path de Python
@@ -16,6 +17,8 @@ if str(project_root) not in sys.path:
 
 from app.utils import LangChainAgent, IOManager, FeedbackManager, contar_palabras
 from app.components import render_sidebar, render_result_display, render_file_uploader
+from app.components.help_modal import titulo_con_ayuda, AYUDA_GENERAR, AYUDA_CORREGIR, AYUDA_RESUMIR, AYUDA_HISTORIAL
+from app.components.styles import aplicar_estilos_globales, obtener_tema
 
 # Cargar variables de entorno
 load_dotenv()
@@ -29,9 +32,43 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Título principal
-st.title("🧠 Chatbot Empresarial")
-st.markdown("**Genera, corrige y resume textos empresariales con IA**")
+# Aplicar estilos globales - se adaptarán automáticamente al tema del sistema
+aplicar_estilos_globales()
+
+# Título principal con mejor diseño (adaptado automáticamente al tema del sistema)
+st.markdown(
+    """
+    <div style="text-align: center; padding: 2rem 0; margin-bottom: 2rem; animation: fadeIn 0.3s ease-out;">
+        <h1 id="main-title" style="font-size: 2.5rem; margin-bottom: 0.5rem;">
+            🧠 Chatbot Empresarial
+        </h1>
+        <p id="main-subtitle" style="font-size: 1.1rem; margin: 0;">
+            Genera, corrige y resume textos empresariales con IA
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# Estilos CSS del título
+st.markdown(
+    """
+    <style>
+    #main-title {
+        background: linear-gradient(135deg, #00acc1 0%, #00838f 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        color: #00acc1;
+    }
+    
+    #main-subtitle {
+        color: #546e7a;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # Inicializar session state
 if "agent" not in st.session_state:
@@ -46,6 +83,8 @@ if "resultado_actual" not in st.session_state:
     st.session_state.resultado_actual = None
 if "resultado_id" not in st.session_state:
     st.session_state.resultado_id = None
+# El tema se detecta automáticamente del sistema mediante CSS
+# No necesitamos almacenar el tema en session_state
 
 # Renderizar sidebar y obtener configuraciones
 config = render_sidebar()
@@ -86,11 +125,17 @@ except Exception as e:
     st.error(f"❌ Error al inicializar el agente: {str(e)}")
     st.stop()
 
-# Actualizar textos de referencia
+# Actualizar textos de referencia (incluye archivos guardados persistentes)
 textos_referencia_nuevos = render_file_uploader()
 if textos_referencia_nuevos:
     st.session_state.textos_referencia = textos_referencia_nuevos
     st.session_state.agent.set_reference_texts(st.session_state.textos_referencia)
+elif "textos_referencia" not in st.session_state or not st.session_state.textos_referencia:
+    # Si no hay textos nuevos pero tampoco hay en session_state, cargar los guardados
+    textos_guardados = st.session_state.io_manager.cargar_archivos_referencia_guardados()
+    if textos_guardados:
+        st.session_state.textos_referencia = textos_guardados
+        st.session_state.agent.set_reference_texts(textos_guardados)
 
 # También cargar textos aprobados
 textos_aprobados = st.session_state.feedback_manager.obtener_textos_aprobados(limite=5)
@@ -98,17 +143,13 @@ if textos_aprobados:
     textos_combinados = list(set(st.session_state.textos_referencia + textos_aprobados))
     st.session_state.agent.set_reference_texts(textos_combinados)
 
-# Actualizar estadísticas
-estadisticas = st.session_state.feedback_manager.obtener_estadisticas()
-st.session_state.estadisticas = estadisticas
-
 # Contenido principal según la acción
 st.divider()
 
 accion = config["accion"]
 
 if accion == "generar":
-    st.subheader("✨ Generar Texto")
+    titulo_con_ayuda("✨ Generar Texto", AYUDA_GENERAR, "generar", nivel="subheader")
     
     tema = st.text_input(
         "Tema o prompt:",
@@ -160,7 +201,7 @@ if accion == "generar":
                     st.info(f"📊 Tokens usados: {resultado['tokens_usados']} | Costo: ${resultado.get('costo', 0):.4f}")
 
 elif accion == "corregir":
-    st.subheader("✏️ Corregir Texto")
+    titulo_con_ayuda("✏️ Corregir Texto", AYUDA_CORREGIR, "corregir", nivel="subheader")
     
     texto_original = st.text_area(
         "Texto a corregir:",
@@ -212,7 +253,7 @@ elif accion == "corregir":
                     st.info(f"📊 Tokens usados: {resultado['tokens_usados']} | Costo: ${resultado.get('costo', 0):.4f}")
 
 elif accion == "resumir":
-    st.subheader("🔍 Resumir Texto")
+    titulo_con_ayuda("🔍 Resumir Texto", AYUDA_RESUMIR, "resumir", nivel="subheader")
     
     texto_original = st.text_area(
         "Texto a resumir:",
@@ -271,14 +312,24 @@ if st.session_state.resultado_actual:
     
     def manejar_feedback(resultado_id: str, aprobado: bool, comentario: str = ""):
         """Maneja el feedback del usuario."""
-        st.session_state.feedback_manager.registrar_feedback(
-            resultado_id=resultado_id,
-            aprobado=aprobado,
-            comentario=comentario
-        )
-        # Actualizar estadísticas
-        estadisticas = st.session_state.feedback_manager.obtener_estadisticas()
-        st.session_state.estadisticas = estadisticas
+        try:
+            # Verificar que el resultado existe antes de procesar
+            resultado_existente = st.session_state.io_manager.obtener_resultado_por_id(resultado_id)
+            if not resultado_existente:
+                st.error(f"❌ No se encontró el resultado con ID: {resultado_id}")
+                return
+            
+            # Registrar el feedback
+            st.session_state.feedback_manager.registrar_feedback(
+                resultado_id=resultado_id,
+                aprobado=aprobado,
+                comentario=comentario
+            )
+            
+            # No limpiar el resultado cuando se rechaza, 
+            # para que el usuario pueda ver el estado de rechazado
+        except Exception as e:
+            st.error(f"❌ Error al registrar feedback: {str(e)}")
     
     render_result_display(
         resultado=st.session_state.resultado_actual,
@@ -289,51 +340,171 @@ if st.session_state.resultado_actual:
 
 # Sección de historial
 st.divider()
-st.subheader("📚 Historial del Mes")
+titulo_con_ayuda("📚 Historial del Mes", AYUDA_HISTORIAL, "historial", nivel="subheader")
 
+# Botón para actualizar
 if st.button("🔄 Actualizar Historial", use_container_width=True):
     st.rerun()
 
-historial = st.session_state.io_manager.obtener_historial_mes()
+# Obtener historial completo
+historial_completo = st.session_state.io_manager.obtener_historial_completo()
+aprobados = historial_completo.get("aprobados", [])
+rechazados = historial_completo.get("rechazados", [])
+todos = historial_completo.get("todos", aprobados + rechazados)  # Incluye todos: aprobados + rechazados + sin feedback
 
-if historial:
-    # Mostrar últimos 5 resultados
-    for registro in historial[-5:][::-1]:
-        with st.expander(f"📄 {registro['accion'].capitalize()} - {registro['id']}"):
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write(f"**Tema:** {registro['tema']}")
-                st.write(f"**Palabras:** {registro['palabras']}")
-                st.write(f"**Modelo:** {registro['modelo']}")
-            with col2:
-                feedback = registro.get("feedback", {})
-                if feedback:
-                    aprobado = feedback.get("aprobado", None)
-                    if aprobado is True:
-                        st.success("👍 Aprobado")
-                    elif aprobado is False:
-                        st.error("👎 Rechazado")
-                    if feedback.get("comentario"):
-                        st.write(f"**Comentario:** {feedback['comentario']}")
-                else:
-                    st.info("⏳ Sin feedback")
-            
-            st.text_area(
-                "Resultado:",
-                value=registro["resultado"],
-                height=100,
-                key=f"historial_{registro['id']}",
-                disabled=True
+# Pestañas para filtrar
+tab1, tab2, tab3 = st.tabs(["📋 Todos", "✅ Aprobados", "❌ Rechazados"])
+
+def mostrar_registro(registro: Dict, es_rechazado: bool = False, tab_prefix: str = ""):
+    """Función auxiliar para mostrar un registro del historial."""
+    resultado_id = registro.get("id", "")
+    accion = registro.get("accion", "generar")
+    tema = registro.get("tema", "")
+    
+    # Generar título resumido del tema
+    from app.utils.text_tools import generar_titulo_resumido
+    titulo_resumido = generar_titulo_resumido(tema, max_caracteres=50)
+    
+    # Determinar el icono según el estado
+    if es_rechazado:
+        icono = "❌"
+        estado_color = "red"
+    else:
+        feedback = registro.get("feedback", {})
+        if feedback.get("aprobado") is True:
+            icono = "✅"
+            estado_color = "green"
+        else:
+            icono = "⏳"
+            estado_color = "gray"
+    
+    # Crear claves únicas usando el prefijo de la pestaña
+    eliminar_key = f"eliminar_{tab_prefix}_{resultado_id}"
+    textarea_key = f"historial_{tab_prefix}_{resultado_id}"
+    
+    # Formatear el título del expander: Acción - Título Resumido - ID
+    titulo_expander = f"{icono} {accion.capitalize()} - {titulo_resumido} - {resultado_id}"
+    
+    with st.expander(titulo_expander, expanded=False):
+        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+        
+        with col1:
+            st.markdown(
+                """
+                <div class="info-container" style="animation: fadeIn 0.3s ease-out;">
+                """,
+                unsafe_allow_html=True
             )
-else:
-    st.info("📭 No hay historial disponible para este mes.")
+            st.markdown(
+                f"""
+                <p style="margin: 0.25rem 0;"><strong>Tema:</strong> {registro['tema']}</p>
+                <p style="margin: 0.25rem 0;"><strong>Palabras:</strong> {registro['palabras']}</p>
+                <p style="margin: 0.25rem 0;"><strong>Modelo:</strong> {registro['modelo']}</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        
+        with col2:
+            feedback = registro.get("feedback", {})
+            if feedback:
+                aprobado = feedback.get("aprobado", None)
+                if aprobado is True:
+                    st.success("👍 Aprobado")
+                elif aprobado is False:
+                    st.error("👎 Rechazado")
+                if feedback.get("comentario"):
+                    st.write(f"**Comentario:** {feedback['comentario']}")
+            else:
+                st.info("⏳ Sin feedback")
+        
+        with col3:
+            # Botones de descarga
+            resultado_texto = registro.get("resultado", "")
+            col_download1, col_download2 = st.columns(2)
+            
+            with col_download1:
+                st.download_button(
+                    "📄 TXT",
+                    data=resultado_texto,
+                    file_name=f"resultado_{resultado_id}.txt",
+                    mime="text/plain",
+                    key=f"descargar_txt_{tab_prefix}_{resultado_id}",
+                    use_container_width=True
+                )
+            
+            with col_download2:
+                import json
+                resultado_json = json.dumps(registro, ensure_ascii=False, indent=2)
+                st.download_button(
+                    "📦 JSON",
+                    data=resultado_json,
+                    file_name=f"resultado_{resultado_id}.json",
+                    mime="application/json",
+                    key=f"descargar_json_{tab_prefix}_{resultado_id}",
+                    use_container_width=True
+                )
+        
+        with col4:
+            # Botón de eliminación
+            if st.button("🗑️ Eliminar", key=eliminar_key, use_container_width=True, type="secondary"):
+                if st.session_state.io_manager.eliminar_resultado(resultado_id):
+                    st.success("✅ Resultado eliminado")
+                    st.rerun()
+                else:
+                    st.error("❌ Error al eliminar")
+        
+        # Contenedor para el resultado con mejor diseño (adaptado automáticamente al tema del sistema)
+        st.markdown(
+            """
+            <div class="historial-container" style="animation: fadeIn 0.3s ease-out;">
+            """,
+            unsafe_allow_html=True
+        )
+        # Mostrar resultado siempre en markdown renderizado
+        st.markdown(registro["resultado"])
 
-# Footer
+# Pestaña: Todos
+with tab1:
+    if todos:
+        st.write(f"**Mostrando {len(todos)} resultados:**")
+        # Ordenar por ID (fecha) descendente
+        todos_ordenados = sorted(todos, key=lambda x: x.get("id", ""), reverse=True)
+        for registro in todos_ordenados:
+            # Determinar si es rechazado
+            es_rechazado = registro.get("feedback", {}).get("aprobado") is False
+            mostrar_registro(registro, es_rechazado, tab_prefix="todos")
+    else:
+        st.info("📭 No hay historial disponible para este mes.")
+
+# Pestaña: Aprobados
+with tab2:
+    if aprobados:
+        st.write(f"**Mostrando {len(aprobados)} resultados aprobados:**")
+        aprobados_ordenados = sorted(aprobados, key=lambda x: x.get("id", ""), reverse=True)
+        for registro in aprobados_ordenados:
+            mostrar_registro(registro, es_rechazado=False, tab_prefix="aprobados")
+    else:
+        st.info("📭 No hay resultados aprobados para este mes.")
+
+# Pestaña: Rechazados
+with tab3:
+    if rechazados:
+        st.write(f"**Mostrando {len(rechazados)} resultados rechazados:**")
+        rechazados_ordenados = sorted(rechazados, key=lambda x: x.get("id", ""), reverse=True)
+        for registro in rechazados_ordenados:
+            mostrar_registro(registro, es_rechazado=True, tab_prefix="rechazados")
+    else:
+        st.info("📭 No hay resultados rechazados para este mes.")
+
+# Footer (adaptado automáticamente al tema del sistema)
 st.divider()
 st.markdown(
-    "<div style='text-align: center; color: gray;'>"
-    "🧠 Chatbot Empresarial v1.0 | Powered by Streamlit + LangChain + OpenAI"
-    "</div>",
+    """
+    <div class="footer-text">
+        🧠 Chatbot Empresarial v1.0 | Powered by Streamlit + LangChain + OpenAI
+    </div>
+    """,
     unsafe_allow_html=True
 )
 

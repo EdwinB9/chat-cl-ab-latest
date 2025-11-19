@@ -5,6 +5,7 @@ Muestra configuración y opciones del usuario.
 
 import streamlit as st
 from typing import Dict, Optional
+from app.components.help_modal import titulo_con_ayuda, AYUDA_CONFIGURACION
 
 
 def render_sidebar() -> Dict:
@@ -16,38 +17,171 @@ def render_sidebar() -> Dict:
     """
     import os
     
+    # Colores Casa Limpia para sidebar (modo claro)
+    color_titulo = "#1a237e"  # Azul oscuro profundo Casa Limpia
+    bg_gradiente = "rgba(0, 172, 193, 0.1)"  # Turquesa Casa Limpia
+    bg_gradiente_end = "rgba(0, 172, 193, 0.05)"
+    border_color = "#00acc1"  # Turquesa principal
+    
     with st.sidebar:
-        st.title("⚙️ Configuración")
+        # Título mejorado del sidebar (adaptado al tema Casa Limpia)
+        st.markdown(
+            f"""
+            <div style="background: linear-gradient(135deg, {bg_gradiente} 0%, {bg_gradiente_end} 100%); 
+                        border-left: 4px solid {border_color}; 
+                        border-radius: 0.5rem; 
+                        padding: 1rem; 
+                        margin-bottom: 1.5rem;
+                        animation: fadeIn 0.3s ease-out;">
+                <h1 style="margin: 0; color: {color_titulo}; font-size: 1.75rem;">
+                    ⚙️ Configuración
+                </h1>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        
+        # Botón de ayuda visible justo después del título
+        if st.button("❓ Ayuda de Configuración", key="help_config_btn", use_container_width=True, type="secondary"):
+            st.session_state.show_config_help = not st.session_state.get("show_config_help", False)
+            st.rerun()
+        
+        # Mostrar ayuda si está activada
+        if st.session_state.get("show_config_help", False):
+            st.markdown("---")
+            st.markdown("### ℹ️ Ayuda de Configuración")
+            from app.components.help_modal import AYUDA_CONFIGURACION
+            st.markdown(AYUDA_CONFIGURACION)
+            if st.button("✅ Cerrar ayuda", key="close_config_help", use_container_width=True, type="primary"):
+                st.session_state.show_config_help = False
+                st.rerun()
+            st.markdown("---")
         
         # Verificar y configurar API keys
         st.subheader("🔑 API Keys")
-        openai_key = os.getenv("OPENAI_API_KEY")
-        google_key = os.getenv("GOOGLE_API_KEY")
         
-        if not openai_key:
-            openai_key_input = st.text_input(
-                "OpenAI API Key (opcional):",
-                type="password",
-                help="Ingresa tu API key de OpenAI si deseas usar modelos OpenAI",
-                key="openai_key_input"
+        # Función helper para manejar API keys de forma consistente
+        def gestionar_api_key(
+            key_name: str,
+            env_var: str,
+            display_name: str,
+            help_text: str,
+            icon: str = "🔑",
+            min_length: int = 10
+        ) -> str:
+            """
+            Gestiona una API key: inicializa, sincroniza y muestra UI.
+            
+            Args:
+                key_name: Nombre de la key en session_state (ej: "openai_api_key")
+                env_var: Nombre de la variable de entorno (ej: "OPENAI_API_KEY")
+                display_name: Nombre a mostrar en la UI
+                help_text: Texto de ayuda
+                icon: Icono a mostrar
+                min_length: Longitud mínima esperada para validación
+            
+            Returns:
+                La API key actual (puede estar vacía)
+            """
+            # Inicializar session_state si no existe
+            if key_name not in st.session_state:
+                st.session_state[key_name] = os.getenv(env_var, "")
+            
+            # Sincronizar session_state con os.environ
+            if st.session_state[key_name] and not os.getenv(env_var):
+                os.environ[env_var] = st.session_state[key_name]
+            
+            # Obtener la key actual
+            current_key = st.session_state[key_name] or os.getenv(env_var, "")
+            
+            # Mostrar UI según si hay key configurada
+            if not current_key:
+                # Input para ingresar nueva key
+                key_input = st.text_input(
+                    f"{icon} {display_name}:",
+                    type="password",
+                    help=help_text,
+                    key=f"{key_name}_input",
+                    placeholder="sk-... o AIza...",
+                    label_visibility="visible"
+                )
+                if key_input and key_input.strip():
+                    cleaned_key = key_input.strip()
+                    # Validación básica de formato
+                    if len(cleaned_key) < min_length:
+                        st.error(f"⚠️ La API key parece ser muy corta (mínimo {min_length} caracteres). Verifica que sea correcta.")
+                    elif cleaned_key.startswith("sk-") or cleaned_key.startswith("AIza") or len(cleaned_key) >= min_length:
+                        st.session_state[key_name] = cleaned_key
+                        os.environ[env_var] = cleaned_key
+                        st.success(f"✅ {display_name} guardada correctamente")
+                        st.rerun()
+                    else:
+                        st.warning("⚠️ El formato de la API key no parece correcto. Verifica que sea válida.")
+            else:
+                # Mostrar key configurada con opción de cambiar
+                col_key, col_btn = st.columns([4, 1])
+                with col_key:
+                    # Mostrar últimos 4 caracteres para verificación
+                    masked_key = f"{'•' * max(8, len(current_key) - 4)}{current_key[-4:]}" if len(current_key) > 4 else "•" * len(current_key)
+                    st.text_input(
+                        f"{icon} {display_name}:",
+                        value=masked_key,
+                        type="password",
+                        disabled=True,
+                        key=f"{key_name}_display",
+                        help=f"API key configurada (últimos 4 caracteres: {current_key[-4:]})"
+                    )
+                with col_btn:
+                    st.markdown("<br>", unsafe_allow_html=True)  # Alinear verticalmente
+                    if st.button(
+                        "🔄",
+                        key=f"change_{key_name}",
+                        help="Cambiar API Key",
+                        use_container_width=True
+                    ):
+                        st.session_state[key_name] = ""
+                        os.environ.pop(env_var, None)
+                        st.info("🔄 API Key eliminada. Ingresa una nueva.")
+                        st.rerun()
+            
+            return current_key
+        
+        # Gestionar ambas API keys
+        openai_key = gestionar_api_key(
+            key_name="openai_api_key",
+            env_var="OPENAI_API_KEY",
+            display_name="OpenAI API Key",
+            help_text="Ingresa tu API key de OpenAI. Obtén una en: https://platform.openai.com/api-keys",
+            icon="🤖",
+            min_length=20
+        )
+        
+        st.markdown("<br>", unsafe_allow_html=True)  # Espaciado
+        
+        google_key = gestionar_api_key(
+            key_name="google_api_key",
+            env_var="GOOGLE_API_KEY",
+            display_name="Google API Key",
+            help_text="Ingresa tu API key de Google Gemini. Obtén una en: https://makersuite.google.com/app/apikey",
+            icon="🔷",
+            min_length=20
+        )
+        
+        # Estado de configuración mejorado
+        st.markdown("<br>", unsafe_allow_html=True)
+        keys_configuradas = []
+        if openai_key:
+            keys_configuradas.append("🤖 OpenAI")
+        if google_key:
+            keys_configuradas.append("🔷 Google Gemini")
+        
+        if keys_configuradas:
+            st.success(f"✅ **Proveedores configurados:** {', '.join(keys_configuradas)}")
+        else:
+            st.warning(
+                "⚠️ **Atención:** Configura al menos una API key para usar la aplicación. "
+                "Puedes usar solo OpenAI, solo Google Gemini, o ambos."
             )
-            if openai_key_input:
-                os.environ["OPENAI_API_KEY"] = openai_key_input
-                st.rerun()
-        
-        if not google_key:
-            google_key_input = st.text_input(
-                "Google API Key (opcional):",
-                type="password",
-                help="Ingresa tu API key de Google si deseas usar modelos Gemini",
-                key="google_key_input"
-            )
-            if google_key_input:
-                os.environ["GOOGLE_API_KEY"] = google_key_input
-                st.rerun()
-        
-        if not openai_key and not google_key:
-            st.warning("⚠️ Configura al menos una API key para usar la aplicación.")
         
         st.divider()
         
@@ -164,16 +298,6 @@ def render_sidebar() -> Dict:
             step=50,
             key="max_palabras"
         )
-        
-        st.divider()
-        
-        # Estadísticas
-        st.subheader("📊 Estadísticas")
-        if "estadisticas" in st.session_state:
-            stats = st.session_state.estadisticas
-            st.metric("Total", stats.get("total", 0))
-            st.metric("Aprobados", stats.get("aprobados", 0))
-            st.metric("Tasa de Aprobación", f"{stats.get('tasa_aprobacion', 0):.1f}%")
         
         st.divider()
         

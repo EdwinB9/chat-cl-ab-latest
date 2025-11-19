@@ -195,7 +195,7 @@ TEMA: {tema}
 {empresa_context}
 
 REQUISITOS:
-- El texto debe tener aproximadamente {max_palabras} palabras
+- El texto debe tener aproximadamente {max_palabras} palabras (puede variar ligeramente, pero intenta mantenerte cerca de este número)
 - Debe ser profesional pero cercano
 - Debe mantener un tono empresarial apropiado
 - Estructura clara con párrafos bien organizados
@@ -204,16 +204,18 @@ REQUISITOS:
 
 {style_context}
 
-Por favor, genera el texto completo asegurándote de que esté alineado con la identidad y valores proporcionados:"""
+Por favor, genera el texto completo asegurándote de que esté alineado con la identidad y valores proporcionados y que se acerque al objetivo de aproximadamente {max_palabras} palabras:"""
         
-        system_content = "Eres un experto en comunicación empresarial y redacción profesional. Generas textos que reflejan los valores, misión y cultura empresarial de manera natural y coherente."
+        system_content = f"Eres un experto en comunicación empresarial y redacción profesional. Generas textos que reflejan los valores, misión y cultura empresarial de manera natural y coherente. Intentas respetar los límites de longitud especificados cuando es posible."
         
         messages = [
             SystemMessage(content=system_content),
             HumanMessage(content=prompt)
         ]
         
-        return self._invoke_llm(messages)
+        resultado = self._invoke_llm(messages)
+        
+        return resultado
     
     def corregir_texto(
         self, 
