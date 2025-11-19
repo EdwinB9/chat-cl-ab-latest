@@ -18,11 +18,12 @@ if str(project_root) not in sys.path:
 from app.utils import LangChainAgent, IOManager, FeedbackManager, contar_palabras
 from app.components import render_sidebar, render_result_display, render_file_uploader
 from app.components.help_modal import titulo_con_ayuda, AYUDA_GENERAR, AYUDA_CORREGIR, AYUDA_RESUMIR, AYUDA_HISTORIAL
+
+# Importar estilos ANTES de set_page_config
 from app.components.styles import aplicar_estilos_globales, obtener_tema
 
 # Cargar variables de entorno
 load_dotenv()
-
 
 # Configuración de la página
 st.set_page_config(
@@ -33,7 +34,11 @@ st.set_page_config(
 )
 
 # Aplicar estilos globales - se adaptarán automáticamente al tema del sistema
-aplicar_estilos_globales()
+try:
+    aplicar_estilos_globales()
+except Exception as e:
+    st.error(f"Error al aplicar estilos: {str(e)}")
+    # Continuar sin estilos si hay un error
 
 # Título principal con mejor diseño (adaptado automáticamente al tema del sistema)
 st.markdown(

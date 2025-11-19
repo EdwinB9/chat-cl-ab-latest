@@ -3,6 +3,9 @@ Componente para subir archivos de referencia.
 """
 
 import streamlit as st
+import json
+import html
+import uuid
 from typing import List, Optional
 from app.components.help_modal import titulo_con_ayuda, AYUDA_ARCHIVOS_REFERENCIA
 
@@ -49,14 +52,67 @@ Puedes incluir múltiples párrafos, listas, o cualquier formato de texto plano.
         
         with col2:
             st.write("**📦 Formato JSON:**")
-            ejemplo_json = """{
-  "texto": "Este es un ejemplo de texto de referencia en formato JSON.",
-  "descripcion": "El sistema buscará campos comunes como 'texto', 'content', 'body', 'mensaje' o 'descripcion'.",
-  "content": "Si no encuentra estos campos, usará todo el contenido JSON como texto de referencia.",
-  "notas": "Puedes estructurar el JSON como prefieras, pero asegúrate de incluir campos de texto legibles."
-}"""
+            ejemplo_json_dict = {
+                "texto": "Este es un ejemplo de texto de referencia en formato JSON.",
+                "descripcion": "El sistema buscará campos comunes como 'texto', 'content', 'body', 'mensaje' o 'descripcion'.",
+                "content": "Si no encuentra estos campos, usará todo el contenido JSON como texto de referencia.",
+                "notas": "Puedes estructurar el JSON como prefieras, pero asegúrate de incluir campos de texto legibles."
+            }
+            ejemplo_json = json.dumps(ejemplo_json_dict, ensure_ascii=False, indent=4)
             
+            # Crear un contenedor con ID único para aplicar estilos específicos
+            container_id = f"json-container-{uuid.uuid4().hex[:8]}"
+            
+            # Estilos específicos para este contenedor JSON
+            st.markdown(f"""
+            <style>
+            #{container_id} {{
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                overflow-x: auto !important;
+                overflow-y: visible !important;
+            }}
+            
+            #{container_id} div[data-testid="stCodeBlock"] {{
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                overflow-x: auto !important;
+                margin: 0 !important;
+            }}
+            
+            #{container_id} div[data-testid="stCodeBlock"] pre {{
+                white-space: pre !important;
+                word-wrap: normal !important;
+                overflow-wrap: normal !important;
+                word-break: normal !important;
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                overflow-x: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }}
+            
+            #{container_id} div[data-testid="stCodeBlock"] code {{
+                white-space: pre !important;
+                word-wrap: normal !important;
+                overflow-wrap: normal !important;
+                word-break: normal !important;
+                display: block !important;
+                width: 100% !important;
+            }}
+            </style>
+            <div id="{container_id}">
+            """, unsafe_allow_html=True)
+            
+            # Usar st.code() con el JSON completo
             st.code(ejemplo_json, language="json")
+            
+            # Cerrar el contenedor
+            st.markdown("</div>", unsafe_allow_html=True)
             st.download_button(
                 "📥 Descargar ejemplo JSON",
                 data=ejemplo_json,
