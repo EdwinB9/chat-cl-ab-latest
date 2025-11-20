@@ -30,6 +30,21 @@ def render_file_uploader() -> List[str]:
     
     # Mostrar ejemplos de formato
     with st.expander("📋 Ver ejemplos de formato", expanded=False):
+        # Estilos para alinear los botones al final de cada columna
+        st.markdown("""
+        <style>
+        /* Alinear botones de descarga al final de cada columna */
+        [data-testid="stExpander"] [data-testid="column"] {
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        
+        [data-testid="stExpander"] [data-testid="column"] [data-testid="stDownloadButton"] {
+            margin-top: auto !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         col1, col2 = st.columns(2)
         
         with col1:
