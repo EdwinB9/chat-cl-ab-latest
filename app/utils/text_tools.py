@@ -12,13 +12,23 @@ def contar_palabras(texto: str) -> int:
     Cuenta el número de palabras en un texto.
     
     Args:
-        texto: Texto a analizar
+        texto: Texto a analizar (puede ser string o cualquier objeto que se pueda convertir a string)
     
     Returns:
         Número de palabras
     """
+    # Asegurar que texto sea un string
     if not texto:
         return 0
+    
+    # Si no es un string, convertirlo
+    if not isinstance(texto, str):
+        texto = str(texto)
+    
+    # Si es una función, no podemos contar palabras
+    if callable(texto):
+        return 0
+    
     palabras = texto.split()
     return len(palabras)
 

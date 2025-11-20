@@ -134,13 +134,15 @@ La aplicación soporta múltiples proveedores de IA:
 #### OpenAI
 - `gpt-4o-mini`: Más económico, recomendado para la mayoría de casos
 - `gpt-4o`: Más potente, mejor calidad (más costoso)
-- `gpt-4-turbo`: Versión turbo de GPT-4
-- `gpt-3.5-turbo`: Modelo más económico y rápido
+- `gpt-3.5-turbo`: Modelo estándar económico y rápido
 
 #### Google Gemini
-- `gemini-1.5-pro`: Modelo más potente y avanzado
-- `gemini-1.5-flash`: Versión rápida y eficiente
-- `gemini-pro`: Modelo estándar de Gemini
+La aplicación utiliza `ChatGoogleGenerativeAI` de LangChain según la [documentación oficial](https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai).
+
+Modelo configurado:
+- `gemini-flash-latest`: Última versión de Gemini Flash (gratuito)
+
+**Nota**: La aplicación ahora usa LangChain correctamente para Gemini.
 
 ### Selección de Proveedor
 

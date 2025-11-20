@@ -1,4 +1,4 @@
- # 🧠 Chatbot Empresarial con Streamlit + LangChain
+ # 🧠 Chatbot CL-AB con Streamlit + LangChain
 
 ## 🎯 Objetivo General
 Desarrollar una aplicación en **Streamlit** que permita a un usuario sin conocimientos de programación **generar, corregir y resumir textos empresariales**, con un estilo coherente basado en textos de referencia (por ejemplo, comunicados creados por una líder de comunicaciones).

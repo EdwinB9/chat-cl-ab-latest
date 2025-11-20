@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List
 from dotenv import load_dotenv
 
 # Agregar el directorio raíz del proyecto al path de Python
@@ -27,7 +27,7 @@ load_dotenv()
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Chatbot Empresarial",
+    page_title="Chatbot CL-AB",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -45,7 +45,7 @@ st.markdown(
     """
     <div style="text-align: center; padding: 2rem 0; margin-bottom: 2rem; animation: fadeIn 0.3s ease-out;">
         <h1 id="main-title" style="font-size: 2.5rem; margin-bottom: 0.5rem;">
-            🧠 Chatbot Empresarial
+            🧠 Chatbot CL-AB
         </h1>
         <p id="main-subtitle" style="font-size: 1.1rem; margin: 0;">
             Genera, corrige y resume textos empresariales con IA
@@ -469,13 +469,181 @@ def mostrar_registro(registro: Dict, es_rechazado: bool = False, tab_prefix: str
         # Mostrar resultado siempre en markdown renderizado
         st.markdown(registro["resultado"])
 
+# Función helper para paginación
+def paginar_resultados(resultados: List[Dict], items_por_pagina: int = 10, key_prefix: str = "pagina"):
+    """
+    Maneja la paginación de resultados.
+    
+    Args:
+        resultados: Lista de resultados a paginar
+        items_por_pagina: Número de items por página
+        key_prefix: Prefijo único para las keys de session_state
+    
+    Returns:
+        Tupla (página_actual, resultados_paginados, total_paginas, total_resultados)
+    """
+    total_resultados = len(resultados)
+    total_paginas = max(1, (total_resultados + items_por_pagina - 1) // items_por_pagina)
+    
+    # Inicializar página actual en session_state
+    pagina_key = f"{key_prefix}_actual"
+    if pagina_key not in st.session_state:
+        st.session_state[pagina_key] = 1
+    
+    pagina_actual = st.session_state[pagina_key]
+    
+    # Asegurar que la página esté en rango válido
+    if pagina_actual < 1:
+        pagina_actual = 1
+    elif pagina_actual > total_paginas:
+        pagina_actual = total_paginas
+    
+    # Calcular índices para la página actual
+    inicio = (pagina_actual - 1) * items_por_pagina
+    fin = inicio + items_por_pagina
+    resultados_paginados = resultados[inicio:fin]
+    
+    return pagina_actual, resultados_paginados, total_paginas, total_resultados
+
+def render_paginacion_mejorada(pagina_actual: int, total_paginas: int, total_resultados: int, 
+                                key_prefix: str, items_por_pagina: int = 10):
+    """
+    Renderiza controles de paginación simples y sutiles.
+    
+    Args:
+        pagina_actual: Página actual
+        total_paginas: Total de páginas
+        total_resultados: Total de resultados
+        key_prefix: Prefijo para las keys únicas
+        items_por_pagina: Items por página
+    """
+    if total_paginas <= 1:
+        # Si solo hay una página, solo mostrar el contador
+        st.caption(f"📊 {total_resultados} resultado{'s' if total_resultados != 1 else ''}")
+        return
+    
+    # Calcular rango de resultados mostrados
+    inicio = (pagina_actual - 1) * items_por_pagina + 1
+    fin = min(pagina_actual * items_por_pagina, total_resultados)
+    
+    # Información sutil
+    st.caption(f"📊 Mostrando {inicio}-{fin} de {total_resultados} (Página {pagina_actual}/{total_paginas})")
+    
+    # Controles de navegación simples - SIEMPRE máximo 5 números de página visibles
+    max_pages_visible = 5
+    
+    # Calcular qué páginas mostrar (SIEMPRE máximo 5, sin importar cuántas páginas haya)
+    if total_paginas <= max_pages_visible:
+        # Si hay 5 o menos páginas, mostrar todas
+        page_numbers = list(range(1, total_paginas + 1))
+    else:
+        # Si hay más de 5 páginas, mostrar máximo 5 números relevantes
+        if pagina_actual <= 3:
+            # Cerca del inicio (páginas 1-3): mostrar 1, 2, 3, 4, 5
+            page_numbers = list(range(1, max_pages_visible + 1))
+        elif pagina_actual >= total_paginas - 2:
+            # Cerca del final: mostrar últimas 5 páginas
+            page_numbers = list(range(total_paginas - max_pages_visible + 1, total_paginas + 1))
+        else:
+            # En el medio: mostrar 2 antes, actual, 2 después (siempre 5 números)
+            page_numbers = list(range(pagina_actual - 2, pagina_actual + 3))
+    
+    # Asegurar que nunca se muestren más de 5 números
+    assert len(page_numbers) <= max_pages_visible, f"Error: se están mostrando más de {max_pages_visible} páginas"
+    
+    # Calcular cuántas columnas necesitamos
+    # Siempre: [Anterior] [Primera(opcional)] [5 números máx] [Última(opcional)] [Siguiente]
+    num_cols_extra = 0
+    if total_paginas > max_pages_visible:
+        # Mostrar botones primera/última solo si hay más de 5 páginas
+        if pagina_actual > 3:
+            num_cols_extra += 1  # Botón primera
+        if pagina_actual < total_paginas - 2:
+            num_cols_extra += 1  # Botón última
+    
+    total_cols = 2 + len(page_numbers) + num_cols_extra  # Anterior + números + última(opcional) + Siguiente
+    
+    # Controles de navegación en una sola fila
+    cols = st.columns([1] * total_cols)
+    
+    idx = 0
+    
+    # Botón Anterior
+    with cols[idx]:
+        if st.button("◀️", key=f"{key_prefix}_prev", disabled=(pagina_actual <= 1),
+                    help="Página anterior", use_container_width=True):
+            st.session_state[f"{key_prefix}_actual"] = max(1, pagina_actual - 1)
+            st.rerun()
+    idx += 1
+    
+    # Botón Primera página (solo si hay más de 5 páginas y no estamos en las primeras)
+    if total_paginas > max_pages_visible and pagina_actual > 3:
+        with cols[idx]:
+            if st.button("⏮️", key=f"{key_prefix}_first", help="Primera página", use_container_width=True):
+                st.session_state[f"{key_prefix}_actual"] = 1
+                st.rerun()
+        idx += 1
+    
+    # Números de página (SIEMPRE máximo 5)
+    for page_num in page_numbers:
+        with cols[idx]:
+            if page_num == pagina_actual:
+                # Página actual - sutil pero destacada
+                st.markdown(
+                    f"""
+                    <div style="
+                        background: rgba(0, 172, 193, 0.15);
+                        color: #00acc1;
+                        padding: 0.4rem;
+                        border-radius: 0.4rem;
+                        text-align: center;
+                        font-weight: 600;
+                        border: 1px solid rgba(0, 172, 193, 0.3);
+                    ">
+                        {page_num}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            else:
+                # Otras páginas - botones simples
+                if st.button(str(page_num), key=f"{key_prefix}_page_{page_num}", 
+                           use_container_width=True, help=f"Página {page_num}"):
+                    st.session_state[f"{key_prefix}_actual"] = int(page_num)
+                    st.rerun()
+        idx += 1
+    
+    # Botón Última página (solo si hay más de 5 páginas y no estamos en las últimas)
+    if total_paginas > max_pages_visible and pagina_actual < total_paginas - 2:
+        with cols[idx]:
+            if st.button("⏭️", key=f"{key_prefix}_last", help="Última página", use_container_width=True):
+                st.session_state[f"{key_prefix}_actual"] = total_paginas
+                st.rerun()
+        idx += 1
+    
+    # Botón Siguiente
+    with cols[idx]:
+        if st.button("▶️", key=f"{key_prefix}_next", disabled=(pagina_actual >= total_paginas),
+                    help="Página siguiente", use_container_width=True):
+            st.session_state[f"{key_prefix}_actual"] = min(total_paginas, pagina_actual + 1)
+            st.rerun()
+
 # Pestaña: Todos
 with tab1:
     if todos:
-        st.write(f"**Mostrando {len(todos)} resultados:**")
         # Ordenar por ID (fecha) descendente
         todos_ordenados = sorted(todos, key=lambda x: x.get("id", ""), reverse=True)
-        for registro in todos_ordenados:
+        
+        # Paginación
+        pagina_actual, todos_paginados, total_paginas, total = paginar_resultados(
+            todos_ordenados, items_por_pagina=10, key_prefix="todos_pagina"
+        )
+        
+        # Mostrar controles de paginación mejorados
+        render_paginacion_mejorada(pagina_actual, total_paginas, total, "todos_pagina", items_por_pagina=10)
+        
+        # Mostrar resultados de la página actual
+        for registro in todos_paginados:
             # Determinar si es rechazado
             es_rechazado = registro.get("feedback", {}).get("aprobado") is False
             mostrar_registro(registro, es_rechazado, tab_prefix="todos")
@@ -485,9 +653,18 @@ with tab1:
 # Pestaña: Aprobados
 with tab2:
     if aprobados:
-        st.write(f"**Mostrando {len(aprobados)} resultados aprobados:**")
         aprobados_ordenados = sorted(aprobados, key=lambda x: x.get("id", ""), reverse=True)
-        for registro in aprobados_ordenados:
+        
+        # Paginación
+        pagina_actual, aprobados_paginados, total_paginas, total = paginar_resultados(
+            aprobados_ordenados, items_por_pagina=10, key_prefix="aprobados_pagina"
+        )
+        
+        # Mostrar controles de paginación mejorados
+        render_paginacion_mejorada(pagina_actual, total_paginas, total, "aprobados_pagina", items_por_pagina=10)
+        
+        # Mostrar resultados de la página actual
+        for registro in aprobados_paginados:
             mostrar_registro(registro, es_rechazado=False, tab_prefix="aprobados")
     else:
         st.info("📭 No hay resultados aprobados para este mes.")
@@ -495,9 +672,18 @@ with tab2:
 # Pestaña: Rechazados
 with tab3:
     if rechazados:
-        st.write(f"**Mostrando {len(rechazados)} resultados rechazados:**")
         rechazados_ordenados = sorted(rechazados, key=lambda x: x.get("id", ""), reverse=True)
-        for registro in rechazados_ordenados:
+        
+        # Paginación
+        pagina_actual, rechazados_paginados, total_paginas, total = paginar_resultados(
+            rechazados_ordenados, items_por_pagina=10, key_prefix="rechazados_pagina"
+        )
+        
+        # Mostrar controles de paginación mejorados
+        render_paginacion_mejorada(pagina_actual, total_paginas, total, "rechazados_pagina", items_por_pagina=10)
+        
+        # Mostrar resultados de la página actual
+        for registro in rechazados_paginados:
             mostrar_registro(registro, es_rechazado=True, tab_prefix="rechazados")
     else:
         st.info("📭 No hay resultados rechazados para este mes.")
@@ -507,7 +693,7 @@ st.divider()
 st.markdown(
     """
     <div class="footer-text">
-        🧠 Chatbot Empresarial v1.0 | Powered by Streamlit + LangChain + OpenAI
+        🧠 Chatbot CL-AB v1.0 | Powered by Streamlit + LangChain + OpenAI
     </div>
     """,
     unsafe_allow_html=True

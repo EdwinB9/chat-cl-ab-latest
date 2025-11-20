@@ -23,6 +23,20 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
 
+# Intentar importar google-generativeai para listar modelos
+try:
+    import google.generativeai as genai
+    GEMINI_GENAI_AVAILABLE = True
+except ImportError:
+    GEMINI_GENAI_AVAILABLE = False
+
+# Intentar importar requests para API REST directa
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+
 # Intentar importar callback para OpenAI
 try:
     from langchain_community.callbacks import get_openai_callback
@@ -42,20 +56,31 @@ except ImportError:
 
 
 class LangChainAgent:
-    """Agente LangChain para operaciones de texto con soporte multi-proveedor."""
+    """
+    Agente LangChain para operaciones de texto con soporte multi-proveedor.
     
-    # Modelos disponibles por proveedor
+    Notas sobre modelos soportados:
+    - ChatOpenAI (OpenAI): Acepta cualquier modelo válido de OpenAI API.
+      Los modelos disponibles dependen de tu cuenta y plan de OpenAI.
+      Modelos comunes: gpt-4o, gpt-4o-mini, gpt-3.5-turbo, gpt-4, etc.
+    
+    - ChatGoogleGenerativeAI (Gemini): Acepta cualquier modelo válido de Gemini API.
+      Los modelos disponibles dependen de tu API key y acceso a Google Cloud.
+      Modelos gratuitos: gemini-1.5-flash, gemini-1.5-pro, gemini-pro
+    """
+    
+    # Modelos disponibles por proveedor (solo modelos actuales y accesibles)
+    # Nota: LangChain acepta cualquier modelo válido, estos son los recomendados
     OPENAI_MODELS = {
-        "gpt-4o-mini": "gpt-4o-mini",
-        "gpt-4o": "gpt-4o",
-        "gpt-4-turbo": "gpt-4-turbo",
-        "gpt-3.5-turbo": "gpt-3.5-turbo"
+        "gpt-4o-mini": "gpt-4o-mini",      # Recomendado: económico y rápido
+        "gpt-4o": "gpt-4o",                # Más potente
+        "gpt-3.5-turbo": "gpt-3.5-turbo"   # Modelo estándar
     }
     
+    # Modelos Gemini - Solo gemini-flash-latest según solicitud
+    # Documentación: https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai
     GEMINI_MODELS = {
-        "gemini-1.5-pro": "gemini-1.5-pro",
-        "gemini-1.5-flash": "gemini-1.5-flash",
-        "gemini-pro": "gemini-pro"
+        "gemini-flash-latest": "gemini-flash-latest"  # Único modelo configurado
     }
     
     def __init__(
@@ -91,22 +116,58 @@ class LangChainAgent:
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
                 raise ValueError("OPENAI_API_KEY no está configurada. Por favor, configura tu API key.")
-            self.llm = ChatOpenAI(
-                model=model_name,
-                temperature=temperature,
-                openai_api_key=api_key
-            )
+            
+            # ChatOpenAI acepta cualquier modelo válido de OpenAI
+            # Validamos que el modelo esté en nuestra lista recomendada, pero LangChain puede aceptar otros
+            try:
+                self.llm = ChatOpenAI(
+                    model=model_name,
+                    temperature=temperature,
+                    openai_api_key=api_key
+                )
+            except Exception as e:
+                # Si el modelo no es válido, LangChain lanzará un error
+                # Esto puede pasar si el modelo no existe o no tienes acceso
+                error_msg = str(e)
+                if "model" in error_msg.lower() and ("not found" in error_msg.lower() or "does not exist" in error_msg.lower()):
+                    raise ValueError(
+                        f"El modelo '{model_name}' no está disponible o no tienes acceso.\n"
+                        f"Modelos recomendados disponibles: {', '.join(self.OPENAI_MODELS.keys())}\n"
+                        f"Error: {error_msg}"
+                    )
+                raise
         elif self.provider == "gemini":
+            # Usar ChatGoogleGenerativeAI de LangChain según documentación oficial
+            # https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai
             if not GEMINI_AVAILABLE:
                 raise ImportError("langchain-google-genai no está instalado. Instálelo con: pip install langchain-google-genai")
-            api_key = os.getenv("GOOGLE_API_KEY")
+            
+            api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
             if not api_key:
-                raise ValueError("GOOGLE_API_KEY no está configurada. Por favor, configura tu API key.")
-            self.llm = ChatGoogleGenerativeAI(
-                model=model_name,
-                temperature=temperature,
-                google_api_key=api_key
-            )
+                raise ValueError("GOOGLE_API_KEY o GEMINI_API_KEY no está configurada. Por favor, configura tu API key.")
+            
+            try:
+                # Usar ChatGoogleGenerativeAI de LangChain (método correcto según documentación)
+                self.llm = ChatGoogleGenerativeAI(
+                    model=model_name,
+                    temperature=temperature,
+                    google_api_key=api_key
+                )
+            except Exception as e:
+                error_msg = str(e)
+                # Si el modelo falla, mostrar error claro
+                if "404" in error_msg or "not found" in error_msg.lower():
+                    raise ValueError(
+                        f"No se pudo inicializar el modelo '{model_name}' de Gemini.\n"
+                        f"Error: {error_msg}\n\n"
+                        f"💡 Verifica:\n"
+                        f"1. Que tu API key (GOOGLE_API_KEY) sea válida\n"
+                        f"2. Que la API de Gemini esté habilitada en Google Cloud\n"
+                        f"3. Que el modelo 'gemini-flash-latest' esté disponible en tu cuenta\n"
+                        f"4. Actualiza langchain-google-genai: pip install --upgrade langchain-google-genai"
+                    )
+                else:
+                    raise
     
     def set_reference_texts(self, texts: List[str]):
         """Establece textos de referencia para mejorar el estilo."""
@@ -142,7 +203,70 @@ class LangChainAgent:
             Dict con el texto generado y metadata
         """
         try:
-            if self.provider == "openai" and use_callback:
+            if self.provider == "gemini":
+                # Usar ChatGoogleGenerativeAI de LangChain (método correcto)
+                response = self.llm.invoke(messages)
+                
+                # Extraer el texto de la respuesta de Gemini
+                # Según la documentación de LangChain, usar response.content directamente
+                texto = ""
+                
+                try:
+                    # Intentar obtener el contenido directamente
+                    if hasattr(response, 'content'):
+                        contenido = response.content
+                        
+                        # Verificar que no sea una función
+                        if callable(contenido):
+                            # Si es una función, no podemos usarla directamente
+                            # Intentar obtener el texto de otra manera
+                            contenido = str(response)
+                        elif isinstance(contenido, list):
+                            # Si es una lista (Gemini 3), extraer el texto de cada elemento
+                            textos = []
+                            for item in contenido:
+                                if isinstance(item, dict):
+                                    # Si tiene 'text', usarlo
+                                    if 'text' in item:
+                                        textos.append(str(item['text']))
+                                    # Si tiene 'type' y 'text'
+                                    elif item.get('type') == 'text' and 'text' in item:
+                                        textos.append(str(item['text']))
+                                    else:
+                                        textos.append(str(item))
+                                else:
+                                    textos.append(str(item))
+                            texto = " ".join(textos)
+                        elif isinstance(contenido, str):
+                            texto = contenido
+                        else:
+                            texto = str(contenido)
+                    else:
+                        # Si no tiene content, convertir toda la respuesta a string
+                        texto = str(response)
+                    
+                    # Asegurar que texto sea un string válido y no una función
+                    if callable(texto):
+                        texto = str(response)
+                    
+                    if not isinstance(texto, str):
+                        texto = str(texto)
+                    
+                    # Limpiar el texto
+                    texto = texto.strip()
+                    
+                except Exception as e:
+                    # Si hay algún error al extraer el texto, usar str(response)
+                    texto = str(response)
+                    if callable(texto):
+                        texto = f"Error al extraer texto: {str(e)}"
+                
+                return {
+                    "texto": texto,
+                    "tokens_usados": response.usage_metadata.get('total_tokens', 0) if hasattr(response, 'usage_metadata') and response.usage_metadata else 0,
+                    "costo": 0.0  # Gemini gratuito
+                }
+            elif self.provider == "openai" and use_callback:
                 with get_openai_callback() as cb:
                     response = self.llm.invoke(messages)
                     texto = response.content
@@ -152,17 +276,67 @@ class LangChainAgent:
                         "costo": cb.total_cost if cb else 0.0
                     }
             else:
-                # Gemini o OpenAI sin callback
+                # OpenAI sin callback
                 response = self.llm.invoke(messages)
                 texto = response.content
                 return {
                     "texto": texto,
-                    "tokens_usados": 0,  # Gemini no tiene callback fácil
+                    "tokens_usados": 0,
                     "costo": 0.0
                 }
         except Exception as e:
+            error_msg = str(e)
+            # Mejorar mensajes de error para Gemini
+            if self.provider == "gemini":
+                if "404" in error_msg or "not found" in error_msg.lower() or "not supported" in error_msg.lower():
+                    sugerencia = (
+                        f"\n\n💡 El modelo '{self.model_name}' no está disponible.\n\n"
+                        f"Verifica que:\n"
+                        f"1. Tu API key (GOOGLE_API_KEY) sea válida\n"
+                        f"2. La API de Gemini esté habilitada en Google Cloud\n"
+                        f"3. El modelo 'gemini-flash-latest' esté disponible en tu cuenta\n"
+                        f"4. Actualiza langchain-google-genai: pip install --upgrade langchain-google-genai\n"
+                        f"5. Revisa la documentación: https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai"
+                    )
+                    
+                    return {
+                        "texto": f"Error al procesar con Gemini: {error_msg}{sugerencia}",
+                        "tokens_usados": 0,
+                        "costo": 0.0
+                    }
+            # Detectar errores específicos de OpenAI
+            if self.provider == "openai":
+                if "429" in error_msg or "quota" in error_msg.lower() or "insufficient_quota" in error_msg.lower():
+                    sugerencia = (
+                        f"\n\n⚠️ Has excedido tu cuota de OpenAI.\n\n"
+                        f"💡 Soluciones:\n"
+                        f"1. **Usa Gemini (GRATUITO)**: Cambia al proveedor 'Google Gemini' en el sidebar\n"
+                        f"   - Gemini es completamente gratuito y no tiene límites de cuota\n"
+                        f"   - Modelos disponibles: gemini-1.5-flash (recomendado), gemini-1.5-pro, gemini-pro\n\n"
+                        f"2. **Espera**: Espera unos minutos y vuelve a intentar con OpenAI\n\n"
+                        f"3. **Verifica tu cuenta**: Revisa tu plan y facturación en https://platform.openai.com/account/billing\n\n"
+                        f"💡 Recomendación: Usa Gemini para evitar problemas de cuota."
+                    )
+                    return {
+                        "texto": f"Error al procesar con OpenAI: {error_msg}{sugerencia}",
+                        "tokens_usados": 0,
+                        "costo": 0.0
+                    }
+                elif "model_not_found" in error_msg.lower() or "does not exist" in error_msg.lower():
+                    sugerencia = (
+                        f"\n\n⚠️ El modelo seleccionado no está disponible.\n\n"
+                        f"💡 Soluciones:\n"
+                        f"1. Cambia a otro modelo de OpenAI en el sidebar (gpt-4o-mini o gpt-3.5-turbo)\n"
+                        f"2. Usa Gemini (GRATUITO) cambiando al proveedor 'Google Gemini' en el sidebar\n"
+                    )
+                    return {
+                        "texto": f"Error al procesar con OpenAI: {error_msg}{sugerencia}",
+                        "tokens_usados": 0,
+                        "costo": 0.0
+                    }
+            
             return {
-                "texto": f"Error al procesar: {str(e)}",
+                "texto": f"Error al procesar: {error_msg}",
                 "tokens_usados": 0,
                 "costo": 0.0
             }
@@ -329,3 +503,41 @@ Por favor, proporciona el resumen:"""
             return LangChainAgent.GEMINI_MODELS
         else:
             return {}
+    
+    @staticmethod
+    def list_available_gemini_models() -> List[str]:
+        """
+        Lista los modelos de Gemini disponibles usando la API de Google.
+        
+        Returns:
+            Lista de nombres de modelos disponibles
+        """
+        if not GEMINI_GENAI_AVAILABLE:
+            return []
+        
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            return []
+        
+        try:
+            genai.configure(api_key=api_key)
+            models = genai.list_models()
+            
+            # Solo usar gemini-flash-latest
+            target_model = 'gemini-flash-latest'
+            
+            # Filtrar solo modelos que soportan generateContent Y es gemini-flash-latest
+            available_models = []
+            for model in models:
+                if 'generateContent' in model.supported_generation_methods:
+                    # Extraer solo el nombre del modelo (sin el prefijo "models/")
+                    model_name = model.name.replace('models/', '')
+                    # Solo incluir si es gemini-flash-latest
+                    if model_name == target_model:
+                        available_models.append(model_name)
+                        break  # Solo necesitamos uno
+            
+            return available_models
+        except Exception as e:
+            # Si falla, retornar lista vacía
+            return []
