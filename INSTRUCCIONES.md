@@ -25,24 +25,65 @@ pip install -r requirements.txt
 
 ### 3. Configuración de las API Keys
 
-Crea un archivo `.env` en la raíz del proyecto con tus API keys (puedes usar una o ambas):
+#### Crear el archivo `.env`
+
+1. **Copia el archivo de ejemplo:**
+   ```bash
+   # En Windows (PowerShell):
+   copy example.env .env
+   
+   # En Windows (CMD):
+   copy example.env .env
+   
+   # En Linux/Mac:
+   cp example.env .env
+   ```
+
+2. **Edita el archivo `.env`** con tu editor de texto favorito y agrega tus API keys:
 
 ```env
-# OpenAI (para modelos GPT-4o, GPT-4o-mini, etc.)
-OPENAI_API_KEY=tu_api_key_openai_aqui
+# APIs de IA Gratuitas (configurar al menos una)
 
-# Google Gemini (para modelos Gemini Pro, Gemini Flash, etc.)
-GOOGLE_API_KEY=tu_api_key_google_aqui
+# Google Gemini - IA generativa avanzada (RECOMENDADO - GRATUITO)
+# Obtén tu API key: https://makersuite.google.com/app/apikey
+GOOGLE_API_KEY=tu_gemini_api_key_aqui
+
+# Groq - Ultra rápido y gratuito
+# Obtén tu API key: https://console.groq.com
+GROQ_API_KEY=tu_groq_api_key_aqui
+
+# Hugging Face - Completamente gratuito
+# Obtén tu token: https://huggingface.co/settings/tokens
+HUGGINGFACE_API_KEY=tu_huggingface_token_aqui
+
+# Together AI - Modelos open source
+# Obtén tu API key: https://api.together.xyz
+TOGETHER_API_KEY=tu_together_api_key_aqui
+
+# Cohere - Gratuito para desarrollo
+# Obtén tu API key: https://dashboard.cohere.ai
+COHERE_API_KEY=tu_cohere_api_key_aqui
+
+# OpenAI - Requiere pago (opcional)
+# Obtén tu API key: https://platform.openai.com/api-keys
+OPENAI_API_KEY=tu_openai_api_key_aqui
 ```
-
-O puedes ingresarlas directamente en la aplicación cuando la ejecutes (se pedirán en el sidebar).
 
 **⚠️ Importante**: 
 - No compartas tus API keys públicamente
-- Puedes usar solo OpenAI, solo Gemini, o ambos
+- Agrega `.env` a tu `.gitignore` si usas control de versiones
+- Puedes usar solo las API keys que vayas a usar (mínimo una necesaria)
 - Necesitas al menos una API key configurada para usar la aplicación
-- Obtén tu API key de OpenAI en: https://platform.openai.com/api-keys
-- Obtén tu API key de Google en: https://makersuite.google.com/app/apikey
+- La aplicación solo mostrará los proveedores que tengan API key configurada
+
+#### 📝 Enlaces para obtener API Keys:
+
+- **Google Gemini (Gratuito)**: https://makersuite.google.com/app/apikey
+- **Groq (Gratuito)**: https://console.groq.com
+- **Hugging Face (Gratuito)**: https://huggingface.co/settings/tokens
+- **Together AI (Gratuito)**: https://api.together.xyz
+- **Cohere (Gratuito)**: https://dashboard.cohere.ai
+- **OpenAI (Requiere Pago)**: https://platform.openai.com/api-keys
 
 ## 🎯 Uso
 
@@ -129,27 +170,49 @@ Chat CL-AB LST/
 
 ### Proveedores de IA
 
-La aplicación soporta múltiples proveedores de IA:
+La aplicación soporta múltiples proveedores de IA. Solo se mostrarán los que tengan API key configurada.
 
-#### OpenAI
-- `gpt-4o-mini`: Más económico, recomendado para la mayoría de casos
-- `gpt-4o`: Más potente, mejor calidad (más costoso)
-- `gpt-3.5-turbo`: Modelo estándar económico y rápido
+#### 🟢 Proveedores Gratuitos (Recomendados)
 
-#### Google Gemini
-La aplicación utiliza `ChatGoogleGenerativeAI` de LangChain según la [documentación oficial](https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai).
+**Google Gemini**
+- Modelo: `gemini-flash-latest` (gratuito)
+- Obtén tu API key: https://makersuite.google.com/app/apikey
+- Características: Rápido, buena calidad
 
-Modelo configurado:
-- `gemini-flash-latest`: Última versión de Gemini Flash (gratuito)
+**Groq**
+- Modelos: Varios modelos Llama y Mistral (gratuito)
+- Obtén tu API key: https://console.groq.com
+- Características: Ultra rápido
 
-**Nota**: La aplicación ahora usa LangChain correctamente para Gemini.
+**Together AI**
+- Modelos: Modelos open source (Llama, Mistral, etc.) (gratuito)
+- Obtén tu API key: https://api.together.xyz
+- Características: Modelos open source
+
+**Hugging Face**
+- Modelos: Varios modelos de Hugging Face (gratuito)
+- Obtén tu token: https://huggingface.co/settings/tokens
+- Características: Amplia variedad de modelos
+
+**Cohere**
+- Modelo: `command-nightly` únicamente (gratuito para desarrollo)
+- Obtén tu API key: https://dashboard.cohere.ai
+- **Nota**: Los modelos `command` y `command-light` fueron removidos el 15 de septiembre de 2025
+
+#### 🔵 Proveedores de Pago
+
+**OpenAI**
+- Modelos: `gpt-4o`, `gpt-4o-mini`, `gpt-3.5-turbo`
+- Obtén tu API key: https://platform.openai.com/api-keys
+- Características: Alta calidad, requiere créditos
+- **Nota**: `gpt-4-turbo` no está disponible en todas las cuentas
 
 ### Selección de Proveedor
 
 Puedes cambiar entre proveedores en el sidebar:
-1. Selecciona el proveedor (OpenAI o Google Gemini)
+1. Selecciona el proveedor (solo se muestran los que tienen API key configurada)
 2. Elige el modelo específico de ese proveedor
-3. La aplicación solo mostrará los proveedores que tienen API key configurada
+3. La aplicación detecta automáticamente los proveedores disponibles
 
 ### Temperatura
 - **Baja (0.0-0.3)**: Textos más consistentes y predecibles
@@ -164,9 +227,10 @@ Puedes cambiar entre proveedores en el sidebar:
 ## ❓ Solución de Problemas
 
 ### Error: "API Key not found"
-- Verifica que hayas creado el archivo `.env` con al menos una API key (OPENAI_API_KEY o GOOGLE_API_KEY)
-- O ingresa la API key en el sidebar de la aplicación
+- Verifica que hayas creado el archivo `.env` en la raíz del proyecto
 - Asegúrate de que la API key corresponda al proveedor seleccionado
+- Verifica que el nombre de la variable en `.env` sea correcto (por ejemplo, `GOOGLE_API_KEY`, `GROQ_API_KEY`, etc.)
+- Reinicia Streamlit después de agregar nuevas API keys
 
 ### Error: "Module not found"
 - Asegúrate de haber instalado todas las dependencias: `pip install -r requirements.txt`

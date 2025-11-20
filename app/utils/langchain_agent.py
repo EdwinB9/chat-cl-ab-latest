@@ -1,6 +1,8 @@
 """
 Módulo para manejar las operaciones con LangChain.
-Soporta OpenAI y Google Gemini como proveedores de IA.
+Soporta múltiples proveedores de IA: OpenAI, Google Gemini, Groq, Together AI, Cohere y Hugging Face.
+
+Los proveedores se habilitan automáticamente si tienen una API key válida configurada en las variables de entorno.
 """
 
 import os
@@ -29,6 +31,53 @@ try:
     GEMINI_GENAI_AVAILABLE = True
 except ImportError:
     GEMINI_GENAI_AVAILABLE = False
+
+# Importar Groq
+GROQ_AVAILABLE = False
+try:
+    from langchain_groq import ChatGroq
+    GROQ_AVAILABLE = True
+except ImportError:
+    try:
+        from langchain_community.chat_models import ChatGroq
+        GROQ_AVAILABLE = True
+    except ImportError:
+        GROQ_AVAILABLE = False
+
+# Importar Together AI
+try:
+    from langchain_together import ChatTogether
+    TOGETHER_AVAILABLE = True
+except ImportError:
+    try:
+        from langchain_community.chat_models import ChatTogether
+        TOGETHER_AVAILABLE = True
+    except ImportError:
+        TOGETHER_AVAILABLE = False
+
+# Importar Cohere
+try:
+    from langchain_cohere import ChatCohere
+    COHERE_AVAILABLE = True
+except ImportError:
+    try:
+        from langchain_community.chat_models import ChatCohere
+        COHERE_AVAILABLE = True
+    except ImportError:
+        COHERE_AVAILABLE = False
+
+# Importar Hugging Face
+try:
+    from langchain_huggingface import ChatHuggingFace
+    from langchain_community.llms import HuggingFaceHub
+    HUGGINGFACE_AVAILABLE = True
+except ImportError:
+    try:
+        from langchain_community.chat_models import ChatHuggingFace
+        from langchain_community.llms import HuggingFaceHub
+        HUGGINGFACE_AVAILABLE = True
+    except ImportError:
+        HUGGINGFACE_AVAILABLE = False
 
 # Intentar importar requests para API REST directa
 try:
@@ -59,28 +108,53 @@ class LangChainAgent:
     """
     Agente LangChain para operaciones de texto con soporte multi-proveedor.
     
-    Notas sobre modelos soportados:
-    - ChatOpenAI (OpenAI): Acepta cualquier modelo válido de OpenAI API.
-      Los modelos disponibles dependen de tu cuenta y plan de OpenAI.
-      Modelos comunes: gpt-4o, gpt-4o-mini, gpt-3.5-turbo, gpt-4, etc.
-    
-    - ChatGoogleGenerativeAI (Gemini): Acepta cualquier modelo válido de Gemini API.
-      Los modelos disponibles dependen de tu API key y acceso a Google Cloud.
-      Modelos gratuitos: gemini-1.5-flash, gemini-1.5-pro, gemini-pro
+    Soporta los siguientes proveedores:
+    - OpenAI: gpt-4o-mini, gpt-4o, gpt-3.5-turbo
+    - Google Gemini: gemini-flash-latest
+    - Groq: llama2-70b-4096, mixtral-8x7b-32768, gemma-7b-it
+    - Together AI: meta-llama/Llama-2-70b-chat-hf, mistralai/Mixtral-8x7B-Instruct-v0.1
+    - Cohere: command, command-light, command-nightly
+    - Hugging Face: Varios modelos open source
     """
     
-    # Modelos disponibles por proveedor (solo modelos actuales y accesibles)
-    # Nota: LangChain acepta cualquier modelo válido, estos son los recomendados
+    # Modelos disponibles por proveedor
     OPENAI_MODELS = {
         "gpt-4o-mini": "gpt-4o-mini",      # Recomendado: económico y rápido
         "gpt-4o": "gpt-4o",                # Más potente
         "gpt-3.5-turbo": "gpt-3.5-turbo"   # Modelo estándar
     }
     
-    # Modelos Gemini - Solo gemini-flash-latest según solicitud
-    # Documentación: https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai
     GEMINI_MODELS = {
         "gemini-flash-latest": "gemini-flash-latest"  # Único modelo configurado
+    }
+    
+    GROQ_MODELS = {
+        "llama2-70b-4096": "llama2-70b-4096",           # Llama 2 70B
+        "mixtral-8x7b-32768": "mixtral-8x7b-32768",     # Mixtral 8x7B
+        "gemma-7b-it": "gemma-7b-it",                   # Gemma 7B Instruct
+        "llama-3.1-70b-versatile": "llama-3.1-70b-versatile",  # Llama 3.1 70B
+        "llama-3.1-8b-instant": "llama-3.1-8b-instant"  # Llama 3.1 8B
+    }
+    
+    TOGETHER_MODELS = {
+        "meta-llama/Llama-2-70b-chat-hf": "meta-llama/Llama-2-70b-chat-hf",
+        "mistralai/Mixtral-8x7B-Instruct-v0.1": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+        "meta-llama/Llama-2-13b-chat-hf": "meta-llama/Llama-2-13b-chat-hf",
+        "meta-llama/Llama-2-7b-chat-hf": "meta-llama/Llama-2-7b-chat-hf"
+    }
+    
+    COHERE_MODELS = {
+        "command-nightly": "command-nightly",     # Command Nightly (experimental - funcional)
+        # Nota: 'command' y 'command-light' fueron removidos el 15 de septiembre de 2025
+        # Solo 'command-nightly' está disponible actualmente para chat
+        # Otros modelos como command-r-plus están disponibles pero requieren configuración diferente
+    }
+    
+    HUGGINGFACE_MODELS = {
+        "meta-llama/Llama-2-7b-chat-hf": "meta-llama/Llama-2-7b-chat-hf",
+        "mistralai/Mistral-7B-Instruct-v0.1": "mistralai/Mistral-7B-Instruct-v0.1",
+        "google/flan-t5-xxl": "google/flan-t5-xxl",
+        "microsoft/DialoGPT-large": "microsoft/DialoGPT-large"
     }
     
     def __init__(
@@ -94,7 +168,7 @@ class LangChainAgent:
         Inicializa el agente LangChain.
         
         Args:
-            provider: Proveedor de IA ("openai" o "gemini")
+            provider: Proveedor de IA ("openai", "gemini", "groq", "together", "cohere", "huggingface")
             model_name: Nombre del modelo a usar
             temperature: Temperatura para la generación (0.0 a 1.0)
             empresa_config_path: Ruta opcional al archivo de configuración de la empresa
@@ -106,8 +180,9 @@ class LangChainAgent:
         self.empresa_config = get_empresa_config(empresa_config_path)
         
         # Validar proveedor
-        if self.provider not in ["openai", "gemini"]:
-            raise ValueError(f"Proveedor '{provider}' no soportado. Use 'openai' o 'gemini'.")
+        valid_providers = ["openai", "gemini", "groq", "together", "cohere", "huggingface"]
+        if self.provider not in valid_providers:
+            raise ValueError(f"Proveedor '{provider}' no soportado. Use uno de: {', '.join(valid_providers)}")
         
         # Inicializar LLM según el proveedor
         if self.provider == "openai":
@@ -168,6 +243,141 @@ class LangChainAgent:
                     )
                 else:
                     raise
+        elif self.provider == "groq":
+            api_key = os.getenv("GROQ_API_KEY")
+            if not api_key:
+                raise ValueError("GROQ_API_KEY no está configurada. Por favor, configura tu API key.")
+            
+            # Intentar importar ChatGroq directamente
+            try:
+                from langchain_groq import ChatGroq
+                groq_class = ChatGroq
+            except ImportError:
+                try:
+                    from langchain_community.chat_models import ChatGroq
+                    groq_class = ChatGroq
+                except ImportError:
+                    raise ImportError("langchain-groq no está instalado. Instálelo con: pip install langchain-groq")
+            
+            try:
+                self.llm = groq_class(
+                    model=model_name,
+                    temperature=temperature,
+                    groq_api_key=api_key
+                )
+            except Exception as e:
+                error_msg = str(e)
+                raise ValueError(
+                    f"No se pudo inicializar el modelo '{model_name}' de Groq.\n"
+                    f"Error: {error_msg}"
+                )
+        elif self.provider == "together":
+            api_key = os.getenv("TOGETHER_API_KEY")
+            if not api_key:
+                raise ValueError("TOGETHER_API_KEY no está configurada. Por favor, configura tu API key.")
+            
+            # Intentar importar ChatTogether directamente
+            try:
+                from langchain_together import ChatTogether
+                together_class = ChatTogether
+            except ImportError:
+                try:
+                    from langchain_community.chat_models import ChatTogether
+                    together_class = ChatTogether
+                except ImportError:
+                    raise ImportError("langchain-together no está instalado. Instálelo con: pip install langchain-together")
+            
+            try:
+                self.llm = together_class(
+                    model=model_name,
+                    temperature=temperature,
+                    together_api_key=api_key
+                )
+            except Exception as e:
+                error_msg = str(e)
+                raise ValueError(
+                    f"No se pudo inicializar el modelo '{model_name}' de Together AI.\n"
+                    f"Error: {error_msg}"
+                )
+        elif self.provider == "cohere":
+            api_key = os.getenv("COHERE_API_KEY")
+            if not api_key:
+                raise ValueError("COHERE_API_KEY no está configurada. Por favor, configura tu API key.")
+            
+            # Intentar importar ChatCohere directamente
+            # Primero verificar que el paquete cohere esté disponible
+            try:
+                import cohere
+            except ImportError:
+                raise ImportError("El paquete 'cohere' no está instalado. Instálelo con: pip install cohere")
+            
+            try:
+                from langchain_cohere import ChatCohere
+                cohere_class = ChatCohere
+            except ImportError as e:
+                try:
+                    from langchain_community.chat_models import ChatCohere
+                    cohere_class = ChatCohere
+                except ImportError:
+                    raise ImportError(
+                        f"langchain-cohere no está instalado o no puede importar 'cohere'. "
+                        f"Instálelo con: pip install langchain-cohere cohere\n"
+                        f"Error original: {str(e)}"
+                    )
+            
+            try:
+                self.llm = cohere_class(
+                    model=model_name,
+                    temperature=temperature,
+                    cohere_api_key=api_key
+                )
+            except Exception as e:
+                error_msg = str(e)
+                # Detectar si es un error de modelo no disponible (404)
+                if "404" in error_msg or "was removed" in error_msg.lower() or "not found" in error_msg.lower():
+                    raise ValueError(
+                        f"El modelo '{model_name}' de Cohere no está disponible o fue removido.\n\n"
+                        f"💡 Modelos disponibles actualmente:\n"
+                        f"- command-nightly (experimental, funcional)\n\n"
+                        f"Nota: Los modelos 'command' y 'command-light' fueron removidos el 15 de septiembre de 2025.\n\n"
+                        f"Error: {error_msg}"
+                    )
+                raise ValueError(
+                    f"No se pudo inicializar el modelo '{model_name}' de Cohere.\n"
+                    f"Error: {error_msg}"
+                )
+        elif self.provider == "huggingface":
+            if not HUGGINGFACE_AVAILABLE:
+                raise ImportError("langchain-community o langchain-huggingface no está instalado. Instálelo con: pip install langchain-community langchain-huggingface")
+            api_key = os.getenv("HUGGINGFACE_API_KEY")
+            if not api_key:
+                raise ValueError("HUGGINGFACE_API_KEY no está configurada. Por favor, configura tu API key.")
+            
+            try:
+                # Intentar primero con ChatHuggingFace (para modelos de chat)
+                try:
+                    self.llm = ChatHuggingFace(
+                        model=model_name,
+                        huggingface_api_key=api_key,
+                        temperature=temperature
+                    )
+                except:
+                    # Si ChatHuggingFace falla, usar HuggingFaceHub
+                    self.llm = HuggingFaceHub(
+                        repo_id=model_name,
+                        huggingfacehub_api_token=api_key,
+                        model_kwargs={"temperature": temperature}
+                    )
+            except Exception as e:
+                error_msg = str(e)
+                raise ValueError(
+                    f"No se pudo inicializar el modelo '{model_name}' de Hugging Face.\n"
+                    f"Error: {error_msg}\n\n"
+                    f"💡 Verifica:\n"
+                    f"1. Que tu API key (HUGGINGFACE_API_KEY) sea válida\n"
+                    f"2. Que el modelo '{model_name}' exista en Hugging Face Hub\n"
+                    f"3. Que tengas acceso al modelo (algunos requieren aceptar términos de uso)"
+                )
     
     def set_reference_texts(self, texts: List[str]):
         """Establece textos de referencia para mejorar el estilo."""
@@ -203,7 +413,102 @@ class LangChainAgent:
             Dict con el texto generado y metadata
         """
         try:
-            if self.provider == "gemini":
+            # Proveedores adicionales (Groq, Together, Cohere, HuggingFace)
+            if self.provider in ["groq", "together", "cohere", "huggingface"]:
+                try:
+                    response = self.llm.invoke(messages)
+                except (AttributeError, TypeError) as e:
+                    # Manejo especial para error conocido de langchain-cohere con token_count
+                    error_msg = str(e)
+                    if self.provider == "cohere" and ("token_count" in error_msg or "NonStreamedChatResponse" in error_msg):
+                        # Fallback: usar SDK de Cohere directamente
+                        try:
+                            import cohere as cohere_sdk
+                            api_key = os.getenv("COHERE_API_KEY")
+                            client = cohere_sdk.Client(api_key=api_key)
+                            
+                            # Convertir mensajes de LangChain a formato Cohere
+                            prompt_parts = []
+                            system_prompt = None
+                            for msg in messages:
+                                if hasattr(msg, 'content'):
+                                    content = msg.content
+                                    msg_type = str(getattr(msg, 'type', '')).lower()
+                                    if 'system' in msg_type:
+                                        system_prompt = content
+                                    elif 'human' in msg_type or 'user' in msg_type:
+                                        prompt_parts.append(content)
+                            
+                            full_prompt = "\n".join(prompt_parts)
+                            if system_prompt:
+                                full_prompt = f"{system_prompt}\n\n{full_prompt}"
+                            
+                            cohere_response = client.chat(
+                                model=self.model_name,
+                                message=full_prompt,
+                                temperature=self.temperature
+                            )
+                            
+                            texto = cohere_response.text if hasattr(cohere_response, 'text') else str(cohere_response)
+                            return {
+                                "texto": texto.strip() if texto else "",
+                                "tokens_usados": 0,
+                                "costo": 0.0
+                            }
+                        except Exception as inner_e:
+                            inner_error_msg = str(inner_e)
+                            if "404" in inner_error_msg or "was removed" in inner_error_msg.lower():
+                                raise ValueError(
+                                    f"El modelo '{self.model_name}' de Cohere no está disponible.\n\n"
+                                    f"💡 Usa 'command-nightly' (los modelos 'command' y 'command-light' fueron removidos).\n"
+                                    f"Error: {inner_error_msg}"
+                                )
+                            raise ValueError(f"Error con Cohere: {error_msg}\nError interno: {str(inner_e)}")
+                    raise ValueError(f"Error al procesar con {self.provider}: {error_msg}")
+                except Exception as e:
+                    raise ValueError(f"Error al procesar con {self.provider}: {str(e)}")
+                
+                # Extraer texto de forma segura
+                texto = ""
+                try:
+                    if hasattr(response, 'content'):
+                        contenido = response.content
+                        if callable(contenido):
+                            contenido = contenido()
+                        texto = str(contenido) if contenido else ""
+                    else:
+                        texto = str(response)
+                except Exception as e:
+                    # Si hay error extrayendo el contenido, usar str(response)
+                    texto = str(response)
+                
+                # Intentar extraer tokens de forma segura (si están disponibles)
+                tokens_usados = 0
+                try:
+                    # Cohere puede tener response_metadata con información de tokens
+                    if hasattr(response, 'response_metadata'):
+                        metadata = response.response_metadata
+                        if isinstance(metadata, dict):
+                            # Intentar diferentes formatos de token info
+                            tokens_usados = metadata.get('token_count', 0) or metadata.get('tokens', 0) or 0
+                    # Algunos proveedores tienen usage_metadata
+                    if tokens_usados == 0 and hasattr(response, 'usage_metadata'):
+                        usage = response.usage_metadata
+                        if usage:
+                            if isinstance(usage, dict):
+                                tokens_usados = usage.get('total_tokens', 0) or 0
+                            else:
+                                tokens_usados = getattr(usage, 'total_tokens', 0) or 0
+                except (AttributeError, TypeError, KeyError):
+                    # Si hay cualquier error, simplemente usar 0
+                    tokens_usados = 0
+                
+                return {
+                    "texto": texto.strip() if texto else "",
+                    "tokens_usados": tokens_usados,
+                    "costo": 0.0  # La mayoría son gratuitos o tienen límites generosos
+                }
+            elif self.provider == "gemini":
                 # Usar ChatGoogleGenerativeAI de LangChain (método correcto)
                 response = self.llm.invoke(messages)
                 
@@ -485,12 +790,67 @@ Por favor, proporciona el resumen:"""
     
     @staticmethod
     def get_available_providers() -> List[str]:
-        """Retorna la lista de proveedores disponibles."""
+        """Retorna la lista de proveedores disponibles (solo los que tienen paquetes instalados)."""
         providers = []
         if OPENAI_AVAILABLE:
             providers.append("openai")
         if GEMINI_AVAILABLE:
             providers.append("gemini")
+        
+        # Verificar Groq - siempre intentar importar de nuevo para asegurar detección
+        # Esto evita problemas con caché de módulos en Streamlit
+        groq_available = False
+        try:
+            from langchain_groq import ChatGroq
+            groq_available = True
+        except ImportError:
+            # Si falla, verificar la variable global
+            groq_available = GROQ_AVAILABLE
+        if groq_available:
+            providers.append("groq")
+        
+        # Verificar Together AI - importación dinámica
+        together_available = False
+        try:
+            from langchain_together import ChatTogether
+            together_available = True
+        except ImportError:
+            try:
+                from langchain_community.chat_models import ChatTogether
+                together_available = True
+            except ImportError:
+                together_available = TOGETHER_AVAILABLE
+        if together_available:
+            providers.append("together")
+        
+        # Verificar Cohere - importación dinámica
+        cohere_available = False
+        try:
+            from langchain_cohere import ChatCohere
+            cohere_available = True
+        except ImportError:
+            try:
+                from langchain_community.chat_models import ChatCohere
+                cohere_available = True
+            except ImportError:
+                cohere_available = COHERE_AVAILABLE
+        if cohere_available:
+            providers.append("cohere")
+        
+        # Verificar Hugging Face - importación dinámica
+        huggingface_available = False
+        try:
+            from langchain_huggingface import ChatHuggingFace
+            huggingface_available = True
+        except ImportError:
+            try:
+                from langchain_community.chat_models import ChatHuggingFace
+                huggingface_available = True
+            except ImportError:
+                huggingface_available = HUGGINGFACE_AVAILABLE
+        if huggingface_available:
+            providers.append("huggingface")
+        
         return providers
     
     @staticmethod
@@ -501,6 +861,14 @@ Por favor, proporciona el resumen:"""
             return LangChainAgent.OPENAI_MODELS
         elif provider == "gemini":
             return LangChainAgent.GEMINI_MODELS
+        elif provider == "groq":
+            return LangChainAgent.GROQ_MODELS
+        elif provider == "together":
+            return LangChainAgent.TOGETHER_MODELS
+        elif provider == "cohere":
+            return LangChainAgent.COHERE_MODELS
+        elif provider == "huggingface":
+            return LangChainAgent.HUGGINGFACE_MODELS
         else:
             return {}
     

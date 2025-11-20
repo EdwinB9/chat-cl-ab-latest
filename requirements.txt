@@ -10,4 +10,11 @@ python-dotenv>=1.0.0
 pandas>=2.0.0
 markdown>=3.4.0
 requests>=2.31.0
+# Paquetes para proveedores adicionales
+langchain-groq>=0.0.1
+langchain-together>=0.1.0
+langchain-cohere>=0.1.0
+langchain-huggingface>=0.0.1
+# Dependencias adicionales para los proveedores
+cohere>=5.0.0  # Requerido por langchain-cohere
 

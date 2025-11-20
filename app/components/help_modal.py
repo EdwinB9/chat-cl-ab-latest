@@ -318,19 +318,48 @@ AYUDA_CONFIGURACION = """
 **Configuración del sistema**
 
 **🔑 API Keys:**
-- **OpenAI API Key:** Necesaria para usar modelos de OpenAI (GPT-4, GPT-3.5, etc.)
-- **Google API Key:** Necesaria para usar modelos de Google Gemini
-- Las keys se guardan en la sesión actual (no se persisten)
+Las API keys se configuran en el archivo `.env` en la raíz del proyecto. La aplicación solo muestra los proveedores que tengan una API key válida configurada.
+
+**Proveedores disponibles:**
+
+🟢 **Google Gemini (Gratuito - Recomendado)**
+- Obtén tu API key: https://makersuite.google.com/app/apikey
+- Modelo: `gemini-flash-latest`
+
+🟢 **Groq (Gratuito - Muy Rápido)**
+- Obtén tu API key: https://console.groq.com
+- Varios modelos Llama y Mistral disponibles
+
+🟢 **Together AI (Gratuito - Modelos Open Source)**
+- Obtén tu API key: https://api.together.xyz
+- Modelos Llama, Mistral, etc.
+
+🟢 **Hugging Face (Gratuito)**
+- Obtén tu token: https://huggingface.co/settings/tokens
+- Amplia variedad de modelos
+
+🟢 **Cohere (Gratuito para Desarrollo)**
+- Obtén tu API key: https://dashboard.cohere.ai
+- Modelo disponible: `command-nightly` únicamente
+
+🔵 **OpenAI (Requiere Pago)**
+- Obtén tu API key: https://platform.openai.com/api-keys
+- Modelos: GPT-4o, GPT-4o-mini, GPT-3.5-turbo
+
+**⚠️ Importante:**
+- Las API keys deben configurarse en el archivo `.env`
+- No compartas tus API keys públicamente
+- Puedes usar solo las API keys que necesites (mínimo una)
 
 **🤖 Proveedor de IA:**
-- Selecciona entre OpenAI o Google Gemini
+- Selecciona entre los proveedores disponibles (solo se muestran si tienen API key configurada)
 - Cada proveedor tiene diferentes modelos disponibles
 - Elige según tus necesidades y presupuesto
 
 **Modelo:**
 - Diferentes modelos tienen diferentes capacidades y costos
-- Modelos más potentes = mejor calidad pero mayor costo
-- Experimenta para encontrar el mejor balance
+- Modelos más potentes = mejor calidad pero mayor costo (en proveedores de pago)
+- Los proveedores gratuitos tienen límites de uso
 
 **Temperatura (Creatividad):**
 - **0.0 - 0.3:** Muy consistente, predecible
@@ -340,7 +369,13 @@ AYUDA_CONFIGURACION = """
 **📏 Palabras máximas:**
 - Límite de palabras para textos generados o resumidos
 - Ajusta según tus necesidades
-- Valores más altos = textos más largos pero mayor costo
+- Valores más altos = textos más largos pero mayor costo (en proveedores de pago)
+
+**💡 Cómo configurar API Keys:**
+1. Copia el archivo `example.env` a `.env` en la raíz del proyecto
+2. Edita el archivo `.env` y agrega tus API keys
+3. Reinicia la aplicación para que detecte las nuevas API keys
+4. Los proveedores con API key válida aparecerán automáticamente en el selector
 """
 
 AYUDA_HISTORIAL = """
