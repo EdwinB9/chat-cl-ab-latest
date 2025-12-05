@@ -1,0 +1,30 @@
+# Versión MINIMAL de requirements.txt
+# Solo las dependencias esenciales - reduce significativamente el tamaño
+# Úsalo si solo necesitas OpenAI y/o Gemini
+
+# Core
+streamlit>=1.28.0
+python-dotenv>=1.0.0
+
+# LangChain core
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-community>=0.0.10
+
+# Solo OpenAI (si solo usas OpenAI)
+langchain-openai>=0.0.2
+openai>=1.0.0
+
+# Solo Google Gemini (si solo usas Gemini) - RECOMENDADO GRATUITO
+langchain-google-genai>=0.0.6,<1.0.0
+google-generativeai>=0.4.1,<0.5.0
+
+# Markdown (requerido para renderizar resultados)
+markdown>=3.4.0
+
+# Eliminado para reducir tamaño:
+# - pandas (no se usa)
+# - requests (incluido en langchain)
+# - langchain-groq, langchain-together, langchain-cohere, langchain-huggingface (solo si los necesitas)
+# - cohere (no necesario como paquete separado)
+
