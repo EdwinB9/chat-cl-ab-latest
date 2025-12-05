@@ -51,9 +51,8 @@ def titulo_con_ayuda(titulo_texto: str, contenido_ayuda: str, key: str, nivel: s
     """
     help_key = f"show_help_{key}"
     
-    # Inicializar estado
-    if help_key not in st.session_state:
-        st.session_state[help_key] = False
+    # Inicializar estado (optimizado para Streamlit 1.28+)
+    st.session_state.setdefault(help_key, False)
     
     # Para títulos grandes, usar título normal con botón que muestra ayuda destacada
     if nivel == "title":
@@ -164,8 +163,8 @@ def boton_ayuda(titulo: str, contenido: str, key: str, posicion: str = "icon"):
     # Para compatibilidad, simplemente mostrar el botón después del título
     help_key = f"show_help_{key}"
     
-    if help_key not in st.session_state:
-        st.session_state[help_key] = False
+    # Inicializar estado (optimizado para Streamlit 1.28+)
+    st.session_state.setdefault(help_key, False)
     
     if posicion == "icon":
         # Botón pequeño inline

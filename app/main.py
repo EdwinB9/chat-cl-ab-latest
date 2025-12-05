@@ -75,19 +75,14 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Inicializar session state
-if "agent" not in st.session_state:
-    st.session_state.agent = None
-if "io_manager" not in st.session_state:
-    st.session_state.io_manager = IOManager()
-if "feedback_manager" not in st.session_state:
-    st.session_state.feedback_manager = FeedbackManager(st.session_state.io_manager)
-if "textos_referencia" not in st.session_state:
-    st.session_state.textos_referencia = []
-if "resultado_actual" not in st.session_state:
-    st.session_state.resultado_actual = None
-if "resultado_id" not in st.session_state:
-    st.session_state.resultado_id = None
+# Inicializar session state de manera eficiente (compatible con Streamlit 1.28+)
+# Usar .get() con valores por defecto para mejor rendimiento
+st.session_state.setdefault("agent", None)
+st.session_state.setdefault("io_manager", IOManager())
+st.session_state.setdefault("feedback_manager", FeedbackManager(st.session_state.io_manager))
+st.session_state.setdefault("textos_referencia", [])
+st.session_state.setdefault("resultado_actual", None)
+st.session_state.setdefault("resultado_id", None)
 # El tema se detecta automáticamente del sistema mediante CSS
 # No necesitamos almacenar el tema en session_state
 
@@ -485,12 +480,9 @@ def paginar_resultados(resultados: List[Dict], items_por_pagina: int = 10, key_p
     total_resultados = len(resultados)
     total_paginas = max(1, (total_resultados + items_por_pagina - 1) // items_por_pagina)
     
-    # Inicializar página actual en session_state
+    # Inicializar página actual en session_state (optimizado para Streamlit 1.28+)
     pagina_key = f"{key_prefix}_actual"
-    if pagina_key not in st.session_state:
-        st.session_state[pagina_key] = 1
-    
-    pagina_actual = st.session_state[pagina_key]
+    pagina_actual = st.session_state.get(pagina_key, 1)
     
     # Asegurar que la página esté en rango válido
     if pagina_actual < 1:

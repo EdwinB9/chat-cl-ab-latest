@@ -175,11 +175,11 @@ def render_sidebar() -> Dict:
             # Mapeo de nombres amigables solo para proveedores disponibles
             provider_options = [provider_names.get(p, p) for p in providers_with_key]
             
-            # Determinar el proveedor por defecto
+            # Determinar el proveedor por defecto (optimizado para Streamlit 1.28+)
             default_index = 0
-            if "provider_previo" in st.session_state:
-                if st.session_state.provider_previo in providers_with_key:
-                    default_index = providers_with_key.index(st.session_state.provider_previo)
+            provider_previo = st.session_state.get("provider_previo")
+            if provider_previo and provider_previo in providers_with_key:
+                default_index = providers_with_key.index(provider_previo)
             
             provider_selected = st.selectbox(
                 "Selecciona el proveedor:",
@@ -217,12 +217,13 @@ def render_sidebar() -> Dict:
             
             modelo_keys = list(modelos_disponibles.keys())
             
-            # Seleccionar modelo
+            # Seleccionar modelo (optimizado para Streamlit 1.28+)
             if modelo_keys:
                 modelo_index = 0
-                if "modelo_previo" in st.session_state and st.session_state.provider_previo == provider_real:
-                    if st.session_state.modelo_previo in modelo_keys:
-                        modelo_index = modelo_keys.index(st.session_state.modelo_previo)
+                modelo_previo = st.session_state.get("modelo_previo")
+                provider_previo_check = st.session_state.get("provider_previo")
+                if modelo_previo and provider_previo_check == provider_real and modelo_previo in modelo_keys:
+                    modelo_index = modelo_keys.index(modelo_previo)
                 
                 modelo = st.selectbox(
                     f"Modelo {provider_names.get(provider_real, provider_real)}:",

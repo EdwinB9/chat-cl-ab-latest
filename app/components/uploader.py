@@ -143,8 +143,8 @@ Puedes incluir múltiples párrafos, listas, o cualquier formato de texto plano.
     io_manager = IOManager()
     
     # Inicializar session_state para archivos a eliminar
-    if "archivos_a_eliminar" not in st.session_state:
-        st.session_state.archivos_a_eliminar = []
+    # Inicializar estado (optimizado para Streamlit 1.28+)
+    st.session_state.setdefault("archivos_a_eliminar", [])
     
     # Procesar eliminaciones pendientes
     if st.session_state.archivos_a_eliminar:
@@ -254,8 +254,8 @@ Puedes incluir múltiples párrafos, listas, o cualquier formato de texto plano.
                     eliminar_key = f"eliminar_archivo_{archivo_info['nombre']}"
                     if st.button("🗑️ Eliminar", key=eliminar_key, use_container_width=True, type="secondary"):
                         # Agregar a la lista de archivos a eliminar
-                        if "archivos_a_eliminar" not in st.session_state:
-                            st.session_state.archivos_a_eliminar = []
+                        # Inicializar estado (optimizado para Streamlit 1.28+)
+                        st.session_state.setdefault("archivos_a_eliminar", [])
                         st.session_state.archivos_a_eliminar.append({
                             'nombre': archivo_info['nombre'],
                             'ruta': archivo_info['ruta']
