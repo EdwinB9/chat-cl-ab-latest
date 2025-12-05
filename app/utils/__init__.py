@@ -1,5 +1,6 @@
 """Utilidades para la aplicación."""
 
+# Importaciones directas (sin try/except para evitar problemas de importación circular)
 from app.utils.langchain_agent import LangChainAgent
 from app.utils.io_manager import IOManager
 from app.utils.feedback_manager import FeedbackManager

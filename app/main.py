@@ -11,25 +11,29 @@ from datetime import datetime
 from typing import Dict, List
 from dotenv import load_dotenv
 
-# Configurar logging
-from app.utils.logger import logger
-
 # Agregar el directorio raíz del proyecto al path de Python
 project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+# Importar módulos principales PRIMERO (antes del logger para evitar importación circular)
+try:
+    from app.utils import LangChainAgent, IOManager, FeedbackManager, contar_palabras
+except Exception as e:
+    # Si falla la importación, mostrar error pero continuar
+    print(f"❌ Error al importar utils: {e}")
+    import traceback
+    traceback.print_exc()
+    raise
+
+# Configurar logging DESPUÉS de importar los módulos principales
+from app.utils.logger import logger
+
 logger.info("=" * 80)
 logger.info("Iniciando aplicación Chatbot CL-AB")
 logger.info(f"Project root: {project_root}")
 logger.info("=" * 80)
-
-try:
-    from app.utils import LangChainAgent, IOManager, FeedbackManager, contar_palabras
-    logger.info("✅ Módulos de utils importados correctamente")
-except Exception as e:
-    logger.error(f"❌ Error al importar utils: {e}", exc_info=True)
-    raise
+logger.info("✅ Módulos de utils importados correctamente")
 
 try:
     from app.components import render_sidebar, render_result_display, render_file_uploader
