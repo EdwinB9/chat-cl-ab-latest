@@ -2,6 +2,9 @@
 echo Iniciando Chatbot Empresarial...
 echo.
 
+REM Cambiar al directorio del script
+cd /d "%~dp0"
+
 REM Verificar si existe el entorno virtual
 if exist venv\Scripts\activate.bat (
     echo Activando entorno virtual...
@@ -16,6 +19,7 @@ if exist venv\Scripts\activate.bat (
 
 echo.
 echo Ejecutando aplicacion...
+echo Nota: Asegurate de estar en el directorio raiz del proyecto
 streamlit run app/main.py
 
 pause

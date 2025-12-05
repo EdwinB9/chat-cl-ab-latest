@@ -12,13 +12,23 @@ def contar_palabras(texto: str) -> int:
     Cuenta el número de palabras en un texto.
     
     Args:
-        texto: Texto a analizar
+        texto: Texto a analizar (puede ser string o cualquier objeto que se pueda convertir a string)
     
     Returns:
         Número de palabras
     """
+    # Asegurar que texto sea un string
     if not texto:
         return 0
+    
+    # Si no es un string, convertirlo
+    if not isinstance(texto, str):
+        texto = str(texto)
+    
+    # Si es una función, no podemos contar palabras
+    if callable(texto):
+        return 0
+    
     palabras = texto.split()
     return len(palabras)
 
@@ -153,3 +163,78 @@ def formatear_texto(texto: str) -> str:
     
     return texto_formateado
 
+
+def generar_titulo_resumido(tema: str, max_caracteres: int = 50) -> str:
+    """
+    Genera un título resumido con palabras clave del tema.
+    Si el tema es muy largo, extrae las palabras más importantes.
+    
+    Args:
+        tema: Tema o texto original
+        max_caracteres: Número máximo de caracteres para el título
+    
+    Returns:
+        Título resumido con palabras clave
+    """
+    if not tema:
+        return "Sin tema"
+    
+    # Limpiar el tema
+    tema = limpiar_texto(tema)
+    
+    # Si el tema es corto, usarlo completo
+    if len(tema) <= max_caracteres:
+        return tema
+    
+    # Si es muy largo, extraer palabras clave
+    palabras = tema.split()
+    
+    # Palabras comunes a ignorar (artículos, preposiciones, etc.)
+    palabras_ignorar = {
+        'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',
+        'de', 'del', 'a', 'al', 'en', 'por', 'para', 'con', 'sin',
+        'sobre', 'bajo', 'entre', 'hasta', 'desde', 'durante',
+        'y', 'o', 'pero', 'que', 'cual', 'cuales', 'cuando',
+        'donde', 'como', 'porque', 'si', 'no', 'también', 'más'
+    }
+    
+    # Extraer palabras importantes (sustantivos, verbos, adjetivos)
+    palabras_importantes = []
+    caracteres_usados = 0
+    
+    for palabra in palabras:
+        palabra_lower = palabra.lower().strip('.,;:!?()[]{}"\'')
+        
+        # Si es una palabra común y ya tenemos palabras importantes, podemos omitirla
+        if palabra_lower in palabras_ignorar and len(palabras_importantes) > 0:
+            # Solo agregar si no excede el límite
+            if caracteres_usados + len(palabra) + 1 <= max_caracteres - 3:  # -3 para "..."
+                palabras_importantes.append(palabra)
+                caracteres_usados += len(palabra) + 1  # +1 por el espacio
+        else:
+            # Palabra importante
+            if caracteres_usados + len(palabra) + 1 <= max_caracteres - 3:
+                palabras_importantes.append(palabra)
+                caracteres_usados += len(palabra) + 1
+            else:
+                break
+    
+    # Si no se extrajeron palabras importantes, usar las primeras palabras
+    if not palabras_importantes:
+        palabras_importantes = []
+        caracteres_usados = 0
+        for palabra in palabras:
+            if caracteres_usados + len(palabra) + 1 <= max_caracteres - 3:
+                palabras_importantes.append(palabra)
+                caracteres_usados += len(palabra) + 1
+            else:
+                break
+    
+    # Construir el título
+    titulo = " ".join(palabras_importantes)
+    
+    # Si el título original era más largo, agregar "..."
+    if len(tema) > len(titulo):
+        titulo = titulo.rstrip() + "..."
+    
+    return titulo

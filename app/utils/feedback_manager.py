@@ -35,17 +35,23 @@ class FeedbackManager:
             comentario: Comentario opcional del usuario
             mes: Mes en formato YYYY-MM. Si es None, usa el mes actual.
         """
+        # Crear el feedback
         feedback = {
             "aprobado": aprobado,
             "comentario": comentario or "",
             "fecha": self.io_manager.generar_id()
         }
         
+        # Primero actualizar el feedback en el resultado
         self.io_manager.actualizar_feedback(resultado_id, feedback, mes)
         
-        # Si no fue aprobado, mover a rechazados
+        # Si no fue aprobado, mover a rechazados (el feedback ya está guardado)
         if not aprobado:
-            self.io_manager.mover_a_rechazados(resultado_id, mes)
+            # Asegurar que el feedback esté en el resultado antes de mover
+            resultado = self.io_manager.obtener_resultado_por_id(resultado_id, mes)
+            if resultado:
+                # El feedback ya está actualizado, ahora mover
+                self.io_manager.mover_a_rechazados(resultado_id, mes)
     
     def obtener_textos_aprobados(self, limite: int = 10) -> List[str]:
         """

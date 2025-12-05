@@ -4,7 +4,13 @@ Muestra configuración y opciones del usuario.
 """
 
 import streamlit as st
+import os
 from typing import Dict, Optional
+from dotenv import load_dotenv
+from app.components.help_modal import titulo_con_ayuda, AYUDA_CONFIGURACION
+
+# Cargar variables de entorno al importar el módulo
+load_dotenv()
 
 
 def render_sidebar() -> Dict:
@@ -14,40 +20,79 @@ def render_sidebar() -> Dict:
     Returns:
         Dict con las configuraciones seleccionadas
     """
-    import os
+    
+    # Colores Casa Limpia para sidebar (modo claro)
+    color_titulo = "#1a237e"  # Azul oscuro profundo Casa Limpia
+    bg_gradiente = "rgba(0, 172, 193, 0.1)"  # Turquesa Casa Limpia
+    bg_gradiente_end = "rgba(0, 172, 193, 0.05)"
+    border_color = "#00acc1"  # Turquesa principal
     
     with st.sidebar:
-        st.title("⚙️ Configuración")
+        # Título mejorado del sidebar (adaptado al tema Casa Limpia)
+        st.markdown(
+            f"""
+            <div style="background: linear-gradient(135deg, {bg_gradiente} 0%, {bg_gradiente_end} 100%); 
+                        border-left: 4px solid {border_color}; 
+                        border-radius: 0.5rem; 
+                        padding: 1rem; 
+                        margin-bottom: 1.5rem;
+                        animation: fadeIn 0.3s ease-out;">
+                <h1 style="margin: 0; color: {color_titulo}; font-size: 1.75rem;">
+                    ⚙️ Configuración
+                </h1>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         
-        # Verificar y configurar API keys
-        st.subheader("🔑 API Keys")
-        openai_key = os.getenv("OPENAI_API_KEY")
-        google_key = os.getenv("GOOGLE_API_KEY")
+        # Botón de ayuda visible justo después del título
+        if st.button("❓ Ayuda de Configuración", key="help_config_btn", use_container_width=True, type="secondary"):
+            st.session_state.show_config_help = not st.session_state.get("show_config_help", False)
+            st.rerun()
         
-        if not openai_key:
-            openai_key_input = st.text_input(
-                "OpenAI API Key (opcional):",
-                type="password",
-                help="Ingresa tu API key de OpenAI si deseas usar modelos OpenAI",
-                key="openai_key_input"
-            )
-            if openai_key_input:
-                os.environ["OPENAI_API_KEY"] = openai_key_input
+        # Mostrar ayuda si está activada
+        if st.session_state.get("show_config_help", False):
+            st.markdown("---")
+            st.markdown("### ℹ️ Ayuda de Configuración")
+            from app.components.help_modal import AYUDA_CONFIGURACION
+            st.markdown(AYUDA_CONFIGURACION)
+            if st.button("✅ Cerrar ayuda", key="close_config_help", use_container_width=True, type="primary"):
+                st.session_state.show_config_help = False
                 st.rerun()
+            st.markdown("---")
         
-        if not google_key:
-            google_key_input = st.text_input(
-                "Google API Key (opcional):",
-                type="password",
-                help="Ingresa tu API key de Google si deseas usar modelos Gemini",
-                key="google_key_input"
+        # Verificar API keys desde variables de entorno
+        load_dotenv()
+        
+        openai_key = os.getenv("OPENAI_API_KEY", "")
+        google_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+        groq_key = os.getenv("GROQ_API_KEY", "")
+        together_key = os.getenv("TOGETHER_API_KEY", "")
+        cohere_key = os.getenv("COHERE_API_KEY", "")
+        huggingface_key = os.getenv("HUGGINGFACE_API_KEY", "")
+        
+        # Mostrar estado de configuración (solo informativo, sin opción de editar)
+        keys_configuradas = []
+        if openai_key:
+            keys_configuradas.append("🤖 OpenAI")
+        if google_key:
+            keys_configuradas.append("🔷 Google Gemini")
+        if groq_key:
+            keys_configuradas.append("⚡ Groq")
+        if together_key:
+            keys_configuradas.append("🤝 Together AI")
+        if cohere_key:
+            keys_configuradas.append("💬 Cohere")
+        if huggingface_key:
+            keys_configuradas.append("🤗 Hugging Face")
+        
+        if keys_configuradas:
+            st.info(f"✅ **Proveedores configurados:** {', '.join(keys_configuradas)}")
+        else:
+            st.warning(
+                "⚠️ **Atención:** Configura al menos una API key en variables de entorno. "
+                "Crea un archivo `.env` con OPENAI_API_KEY o GOOGLE_API_KEY."
             )
-            if google_key_input:
-                os.environ["GOOGLE_API_KEY"] = google_key_input
-                st.rerun()
-        
-        if not openai_key and not google_key:
-            st.warning("⚠️ Configura al menos una API key para usar la aplicación.")
         
         st.divider()
         
@@ -67,6 +112,7 @@ def render_sidebar() -> Dict:
         # Importar para obtener proveedores disponibles
         from app.utils.langchain_agent import LangChainAgent
         
+        # Obtener proveedores disponibles (el método ya verifica Groq dinámicamente)
         providers_available = LangChainAgent.get_available_providers()
         if not providers_available:
             st.error("❌ No hay proveedores disponibles. Instala las dependencias necesarias.")
@@ -76,13 +122,49 @@ def render_sidebar() -> Dict:
         providers_with_key = []
         provider_names = {
             "openai": "OpenAI",
-            "gemini": "Google Gemini"
+            "gemini": "Google Gemini",
+            "groq": "Groq",
+            "together": "Together AI",
+            "cohere": "Cohere",
+            "huggingface": "Hugging Face"
         }
         
         if "openai" in providers_available and openai_key:
             providers_with_key.append("openai")
         if "gemini" in providers_available and google_key:
             providers_with_key.append("gemini")
+        
+        # Verificar proveedores adicionales dinámicamente
+        def check_provider_package(package_name, class_name=None):
+            """Verifica si un paquete de proveedor está disponible."""
+            try:
+                __import__(package_name)
+                return True
+            except ImportError:
+                if class_name:
+                    try:
+                        from langchain_community import chat_models
+                        if hasattr(chat_models, class_name):
+                            return True
+                    except (ImportError, AttributeError):
+                        pass
+                return False
+        
+        # Verificar y agregar proveedores adicionales
+        additional_providers = [
+            ("groq", "langchain_groq", "ChatGroq", groq_key),
+            ("together", "langchain_together", "ChatTogether", together_key),
+            ("cohere", "langchain_cohere", "ChatCohere", cohere_key),
+            ("huggingface", "langchain_huggingface", "ChatHuggingFace", huggingface_key)
+        ]
+        
+        for provider_id, package_name, class_name, api_key in additional_providers:
+            if api_key and check_provider_package(package_name, class_name):
+                if provider_id not in providers_with_key:
+                    providers_with_key.append(provider_id)
+                if provider_id not in providers_available:
+                    providers_available.append(provider_id)
+        
         
         if not providers_with_key:
             st.warning("⚠️ Configura al menos una API key para usar la aplicación.")
@@ -118,6 +200,21 @@ def render_sidebar() -> Dict:
             
             # Obtener modelos disponibles para el proveedor seleccionado
             modelos_disponibles = LangChainAgent.get_available_models(provider_real)
+            
+            # Para Gemini, solo mostrar modelos GRATUITOS
+            if provider_real == "gemini":
+                # Obtener solo modelos gratuitos disponibles dinámicamente
+                available_gemini_models = LangChainAgent.list_available_gemini_models()
+                if available_gemini_models:
+                    # Crear un diccionario con los modelos gratuitos disponibles
+                    modelos_dinamicos = {model: model for model in available_gemini_models}
+                    # Combinar con los modelos predefinidos (todos gratuitos), dando prioridad a los dinámicos
+                    modelos_disponibles = {**modelos_dinamicos, **modelos_disponibles}
+                # Asegurar que solo mostramos modelos gratuitos (filtrar cualquier modelo no gratuito)
+                modelos_gratuitos = LangChainAgent.get_available_models("gemini")
+                # Filtrar para mantener solo los que están en la lista de gratuitos
+                modelos_disponibles = {k: v for k, v in modelos_disponibles.items() if k in modelos_gratuitos}
+            
             modelo_keys = list(modelos_disponibles.keys())
             
             # Seleccionar modelo
@@ -164,16 +261,6 @@ def render_sidebar() -> Dict:
             step=50,
             key="max_palabras"
         )
-        
-        st.divider()
-        
-        # Estadísticas
-        st.subheader("📊 Estadísticas")
-        if "estadisticas" in st.session_state:
-            stats = st.session_state.estadisticas
-            st.metric("Total", stats.get("total", 0))
-            st.metric("Aprobados", stats.get("aprobados", 0))
-            st.metric("Tasa de Aprobación", f"{stats.get('tasa_aprobacion', 0):.1f}%")
         
         st.divider()
         
