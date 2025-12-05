@@ -9,7 +9,18 @@ import os
 from typing import Optional, Dict, List
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.language_models.chat_models import BaseChatModel
-from app.utils.empresa_config import get_empresa_config
+
+# Importación robusta de empresa_config para evitar errores en Streamlit Cloud
+try:
+    from app.utils.empresa_config import get_empresa_config
+except (ImportError, KeyError, ModuleNotFoundError) as e:
+    # Si falla la importación, crear una función stub
+    def get_empresa_config(config_path: Optional[str] = None):
+        """Función stub cuando empresa_config no está disponible."""
+        class StubEmpresaConfig:
+            def get_contexto_completo(self):
+                return ""
+        return StubEmpresaConfig()
 
 # Importar OpenAI
 try:
@@ -177,7 +188,16 @@ class LangChainAgent:
         self.model_name = model_name
         self.temperature = temperature
         self.reference_texts: List[str] = []
-        self.empresa_config = get_empresa_config(empresa_config_path)
+        
+        # Inicializar empresa_config de manera robusta
+        try:
+            self.empresa_config = get_empresa_config(empresa_config_path)
+        except (ImportError, KeyError, ModuleNotFoundError, AttributeError) as e:
+            # Si falla, crear una instancia stub
+            class StubEmpresaConfig:
+                def get_contexto_completo(self):
+                    return ""
+            self.empresa_config = StubEmpresaConfig()
         
         # Validar proveedor
         valid_providers = ["openai", "gemini", "groq", "together", "cohere", "huggingface"]
@@ -395,8 +415,11 @@ class LangChainAgent:
     
     def _get_empresa_context(self) -> str:
         """Genera contexto de la empresa desde la configuración."""
-        contexto_completo = self.empresa_config.get_contexto_completo()
-        if not contexto_completo:
+        try:
+            contexto_completo = self.empresa_config.get_contexto_completo()
+            if not contexto_completo:
+                return ""
+        except (AttributeError, KeyError, TypeError):
             return ""
         
         return f"\n\n--- CONTEXTO Y VALORES EMPRESARIALES ---\n{contexto_completo}\n\nIMPORTANTE: El texto generado debe estar alineado con estos valores, misión, visión y contexto empresarial. Usa el tono de comunicación especificado.\n"
