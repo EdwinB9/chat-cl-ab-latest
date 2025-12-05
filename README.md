@@ -391,6 +391,23 @@ Los rechazados se guardan aparte o se descartan.
 
 ---
 
+## 🚀 Deployment (Despliegue en la Nube)
+
+¿Quieres deployar tu aplicación en la nube? Tenemos guías completas:
+
+- **[DEPLOYMENT_RAPIDO.md](DEPLOYMENT_RAPIDO.md)** - Guía rápida (5 minutos) para deployment
+- **[GUIA_DEPLOYMENT.md](GUIA_DEPLOYMENT.md)** - Guía completa con todas las opciones
+
+### Opciones Recomendadas:
+
+1. **Railway** (⭐ Recomendado) - Gratis, con persistencia, fácil de usar
+2. **Streamlit Cloud** - Gratis, pero sin persistencia de datos
+3. **Render** - Gratis con limitaciones
+
+La aplicación ya está preparada para funcionar en todas estas plataformas.
+
+---
+
 ## 📞 Soporte
 
 Si tienes problemas o preguntas:
@@ -398,6 +415,7 @@ Si tienes problemas o preguntas:
 2. Verifica que todas las dependencias estén instaladas correctamente
 3. Asegúrate de tener al menos una API key válida configurada en el archivo `.env`
 4. Consulta la ayuda integrada en la aplicación (botón "❓ Ayuda de Configuración")
+5. Para problemas de deployment, consulta las guías de deployment arriba
 
 ---
 

@@ -9,8 +9,6 @@ import traceback
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List
-from dotenv import load_dotenv
-
 # Agregar el directorio raíz del proyecto al path de Python
 project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
@@ -50,9 +48,10 @@ try:
 except Exception as e:
     logger.warning(f"⚠️ Error al importar estilos: {e}")
 
-# Cargar variables de entorno
-load_dotenv()
-logger.info("✅ Variables de entorno cargadas")
+# Cargar variables de entorno (compatible con .env local y Streamlit Secrets)
+from app.utils.env_loader import load_environment_variables
+load_environment_variables()
+logger.info("✅ Variables de entorno cargadas (desde .env o Streamlit Secrets)")
 
 # Configuración de la página
 try:
@@ -153,11 +152,12 @@ except Exception as e:
     st.stop()
 
 # Verificar que el proveedor seleccionado tenga API key configurada
+from app.utils.env_loader import get_env
 provider = config.get("provider", "openai")
-if provider == "openai" and not os.getenv("OPENAI_API_KEY"):
+if provider == "openai" and not get_env("OPENAI_API_KEY"):
     st.error("❌ OpenAI API Key no está configurada. Por favor, configura tu API key de OpenAI en el sidebar.")
     st.stop()
-elif provider == "gemini" and not os.getenv("GOOGLE_API_KEY"):
+elif provider == "gemini" and not get_env("GOOGLE_API_KEY"):
     st.error("❌ Google API Key no está configurada. Por favor, configura tu API key de Google en el sidebar.")
     st.stop()
 

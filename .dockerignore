@@ -1,0 +1,71 @@
+# Excluir entorno virtual (se instala en el contenedor)
+venv/
+env/
+.venv/
+ENV/
+
+# Excluir archivos de Python compilados
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Excluir archivos de build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Excluir archivos de desarrollo
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Excluir variables de entorno
+.env
+.env.local
+.env.*.local
+
+# Excluir datos locales (se crearán en el contenedor)
+data/resultados/*.json
+data/rechazados/*.json
+data/archivos_referencia/*
+
+# Mantener estructura de directorios pero sin datos
+!data/resultados/.gitkeep
+!data/rechazados/.gitkeep
+
+# Excluir logs
+*.log
+
+# Excluir archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Excluir archivos de Git
+.git/
+.gitignore
+
+# Excluir documentación de desarrollo (opcional, puedes mantenerla)
+# GUIA_DEPLOYMENT.md
+# DEPLOYMENT_RAPIDO.md
+# INSTRUCCIONES.md
+
+# Excluir archivos de ejemplo
+example.env
+.secrets.toml.example
+
+# Excluir scripts de desarrollo local
+run.bat
+run.sh
+run_streamlit.py
+check_*.py
+
+# Excluir directorios estáticos vacíos (si no tienen contenido importante)
+static/css/
+static/js/
+templates/
+

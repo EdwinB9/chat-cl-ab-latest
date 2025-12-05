@@ -53,3 +53,5 @@ Thumbs.db
 # Logs
 *.log
 
+# Nota: .dockerignore y Dockerfile deben estar en el repo para Railway
+

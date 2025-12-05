@@ -6,12 +6,12 @@ Muestra configuración y opciones del usuario.
 import streamlit as st
 import os
 from typing import Dict, Optional
-from dotenv import load_dotenv
 from app.components.help_modal import titulo_con_ayuda, AYUDA_CONFIGURACION
 from app.utils.logger import logger
+from app.utils.env_loader import load_environment_variables, get_env
 
-# Cargar variables de entorno al importar el módulo
-load_dotenv()
+# Cargar variables de entorno al importar el módulo (compatible con .env y Streamlit Secrets)
+load_environment_variables()
 
 
 def render_sidebar() -> Dict:
@@ -72,15 +72,15 @@ def render_sidebar() -> Dict:
                     st.exception(e)
             st.markdown("---")
         
-        # Verificar API keys desde variables de entorno
-        load_dotenv()
+        # Verificar API keys desde variables de entorno (compatible con .env y Streamlit Secrets)
+        load_environment_variables()
         
-        openai_key = os.getenv("OPENAI_API_KEY", "")
-        google_key = os.getenv("GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
-        groq_key = os.getenv("GROQ_API_KEY", "")
-        together_key = os.getenv("TOGETHER_API_KEY", "")
-        cohere_key = os.getenv("COHERE_API_KEY", "")
-        huggingface_key = os.getenv("HUGGINGFACE_API_KEY", "")
+        openai_key = get_env("OPENAI_API_KEY", "")
+        google_key = get_env("GOOGLE_API_KEY", "") or get_env("GEMINI_API_KEY", "")
+        groq_key = get_env("GROQ_API_KEY", "")
+        together_key = get_env("TOGETHER_API_KEY", "")
+        cohere_key = get_env("COHERE_API_KEY", "")
+        huggingface_key = get_env("HUGGINGFACE_API_KEY", "")
         
         # Mostrar estado de configuración (solo informativo, sin opción de editar)
         keys_configuradas = []
