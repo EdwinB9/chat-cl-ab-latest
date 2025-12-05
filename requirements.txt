@@ -1,20 +1,39 @@
+# Core dependencies - REQUERIDAS
 streamlit>=1.28.0
-langchain>=0.1.0
-langchain-openai>=0.0.2
-langchain-google-genai>=0.0.6,<1.0.0
-langchain-community>=0.0.10
-langchain-core>=0.1.0
-openai>=1.0.0
-google-generativeai>=0.4.1,<0.5.0
 python-dotenv>=1.0.0
-pandas>=2.0.0
-markdown>=3.4.0
-requests>=2.31.0
-# Paquetes para proveedores adicionales
-langchain-groq>=0.0.1
-langchain-together>=0.1.0
-langchain-cohere>=0.1.0
-langchain-huggingface>=0.0.1
-# Dependencias adicionales para los proveedores
-cohere>=5.0.0  # Requerido por langchain-cohere
 
+# LangChain core - REQUERIDAS
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-community>=0.0.10
+
+# LangChain providers - OPCIONALES (solo se instalan si se usan)
+# Descomenta solo los que necesites para reducir el tamaño
+
+# OpenAI (si usas OpenAI)
+langchain-openai>=0.0.2
+openai>=1.0.0
+
+# Google Gemini (si usas Gemini) - RECOMENDADO GRATUITO
+langchain-google-genai>=0.0.6,<1.0.0
+google-generativeai>=0.4.1,<0.5.0
+
+# Groq (si usas Groq) - GRATUITO
+langchain-groq>=0.0.1
+
+# Together AI (si usas Together AI) - GRATUITO
+langchain-together>=0.1.0
+
+# Cohere (si usas Cohere) - GRATUITO
+langchain-cohere>=0.1.0
+
+# Hugging Face (si usas Hugging Face) - GRATUITO
+langchain-huggingface>=0.0.1
+
+# Markdown rendering - REQUERIDA (usada en result_display.py y help_modal.py)
+markdown>=3.4.0
+
+# NOTA: pandas, requests y cohere fueron eliminados porque:
+# - pandas: No se usa en ningún lugar del código
+# - requests: Se importa pero nunca se usa (langchain lo incluye como dependencia)
+# - cohere: No es necesario como paquete separado, langchain-cohere lo maneja
