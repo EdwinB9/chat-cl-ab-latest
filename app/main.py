@@ -5,38 +5,70 @@ Aplicación principal de Streamlit para el Chatbot Empresarial.
 import streamlit as st
 import os
 import sys
+import traceback
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List
 from dotenv import load_dotenv
+
+# Configurar logging
+from app.utils.logger import logger
 
 # Agregar el directorio raíz del proyecto al path de Python
 project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from app.utils import LangChainAgent, IOManager, FeedbackManager, contar_palabras
-from app.components import render_sidebar, render_result_display, render_file_uploader
-from app.components.help_modal import titulo_con_ayuda, AYUDA_GENERAR, AYUDA_CORREGIR, AYUDA_RESUMIR, AYUDA_HISTORIAL
+logger.info("=" * 80)
+logger.info("Iniciando aplicación Chatbot CL-AB")
+logger.info(f"Project root: {project_root}")
+logger.info("=" * 80)
+
+try:
+    from app.utils import LangChainAgent, IOManager, FeedbackManager, contar_palabras
+    logger.info("✅ Módulos de utils importados correctamente")
+except Exception as e:
+    logger.error(f"❌ Error al importar utils: {e}", exc_info=True)
+    raise
+
+try:
+    from app.components import render_sidebar, render_result_display, render_file_uploader
+    from app.components.help_modal import titulo_con_ayuda, AYUDA_GENERAR, AYUDA_CORREGIR, AYUDA_RESUMIR, AYUDA_HISTORIAL
+    logger.info("✅ Módulos de components importados correctamente")
+except Exception as e:
+    logger.error(f"❌ Error al importar components: {e}", exc_info=True)
+    raise
 
 # Importar estilos ANTES de set_page_config
-from app.components.styles import aplicar_estilos_globales, obtener_tema
+try:
+    from app.components.styles import aplicar_estilos_globales, obtener_tema
+    logger.info("✅ Estilos importados correctamente")
+except Exception as e:
+    logger.warning(f"⚠️ Error al importar estilos: {e}")
 
 # Cargar variables de entorno
 load_dotenv()
+logger.info("✅ Variables de entorno cargadas")
 
 # Configuración de la página
-st.set_page_config(
-    page_title="Chatbot CL-AB",
-    page_icon="🧠",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+try:
+    st.set_page_config(
+        page_title="Chatbot CL-AB",
+        page_icon="🧠",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+    logger.info("✅ Configuración de página establecida")
+except Exception as e:
+    logger.error(f"❌ Error en set_page_config: {e}", exc_info=True)
+    # Continuar aunque falle (puede que ya esté configurado)
 
 # Aplicar estilos globales - se adaptarán automáticamente al tema del sistema
 try:
     aplicar_estilos_globales()
+    logger.info("✅ Estilos globales aplicados")
 except Exception as e:
+    logger.warning(f"⚠️ Error al aplicar estilos: {e}", exc_info=True)
     st.error(f"Error al aplicar estilos: {str(e)}")
     # Continuar sin estilos si hay un error
 
@@ -77,17 +109,44 @@ st.markdown(
 
 # Inicializar session state de manera eficiente (compatible con Streamlit 1.28+)
 # Usar .get() con valores por defecto para mejor rendimiento
-st.session_state.setdefault("agent", None)
-st.session_state.setdefault("io_manager", IOManager())
-st.session_state.setdefault("feedback_manager", FeedbackManager(st.session_state.io_manager))
-st.session_state.setdefault("textos_referencia", [])
-st.session_state.setdefault("resultado_actual", None)
-st.session_state.setdefault("resultado_id", None)
+try:
+    logger.info("Inicializando session_state...")
+    st.session_state.setdefault("agent", None)
+    logger.info("✅ agent inicializado en session_state")
+    
+    if "io_manager" not in st.session_state:
+        st.session_state.io_manager = IOManager()
+        logger.info("✅ io_manager inicializado")
+    else:
+        logger.info("✅ io_manager ya existe en session_state")
+    
+    if "feedback_manager" not in st.session_state:
+        st.session_state.feedback_manager = FeedbackManager(st.session_state.io_manager)
+        logger.info("✅ feedback_manager inicializado")
+    else:
+        logger.info("✅ feedback_manager ya existe en session_state")
+    
+    st.session_state.setdefault("textos_referencia", [])
+    st.session_state.setdefault("resultado_actual", None)
+    st.session_state.setdefault("resultado_id", None)
+    logger.info("✅ Session state inicializado correctamente")
+except Exception as e:
+    logger.error(f"❌ Error al inicializar session_state: {e}", exc_info=True)
+    st.exception(e)
+    st.stop()
 # El tema se detecta automáticamente del sistema mediante CSS
 # No necesitamos almacenar el tema en session_state
 
 # Renderizar sidebar y obtener configuraciones
-config = render_sidebar()
+try:
+    logger.info("Renderizando sidebar...")
+    config = render_sidebar()
+    logger.info(f"✅ Sidebar renderizado. Config: {config}")
+except Exception as e:
+    logger.error(f"❌ Error al renderizar sidebar: {e}", exc_info=True)
+    st.exception(e)
+    st.error("❌ Error al cargar la configuración. Por favor, recarga la página.")
+    st.stop()
 
 # Verificar que el proveedor seleccionado tenga API key configurada
 provider = config.get("provider", "openai")
@@ -164,41 +223,74 @@ if accion == "generar":
     )
     
     if st.button("🚀 Generar Texto", type="primary", use_container_width=True):
-        if not tema:
-            st.error("❌ Por favor, ingresa un tema o prompt.")
-        else:
-            with st.spinner("⏳ Generando texto..."):
-                resultado = st.session_state.agent.generar_texto(
-                    tema=tema,
-                    max_palabras=config["max_palabras"],
-                    instrucciones_adicionales=instrucciones_adicionales
-                )
-                
-                texto_generado = resultado["texto"]
-                palabras = contar_palabras(texto_generado)
-                
-                # Guardar resultado
-                resultado_id = st.session_state.io_manager.guardar_resultado(
-                    accion="generar",
-                    tema=tema,
-                    resultado=texto_generado,
-                    palabras=palabras,
-                    modelo=f"{config.get('provider', 'openai')}/{config['modelo']}",
-                    config={
-                        "provider": config.get("provider", "openai"),
-                        "temperature": config["temperatura"],
-                        "max_palabras": config["max_palabras"]
-                    }
-                )
-                
-                st.session_state.resultado_actual = texto_generado
-                st.session_state.resultado_id = resultado_id
-                
-                st.success("✅ Texto generado exitosamente!")
-                
-                # Mostrar información de tokens
-                if resultado.get("tokens_usados"):
-                    st.info(f"📊 Tokens usados: {resultado['tokens_usados']} | Costo: ${resultado.get('costo', 0):.4f}")
+        logger.info("=" * 80)
+        logger.info("BOTÓN PRESIONADO: Generar Texto")
+        logger.info(f"Tema: {tema}")
+        logger.info(f"Config: {config}")
+        logger.info("=" * 80)
+        
+        try:
+            if not tema:
+                logger.warning("⚠️ Tema vacío")
+                st.error("❌ Por favor, ingresa un tema o prompt.")
+            else:
+                logger.info("Iniciando generación de texto...")
+                with st.spinner("⏳ Generando texto..."):
+                    try:
+                        resultado = st.session_state.agent.generar_texto(
+                            tema=tema,
+                            max_palabras=config["max_palabras"],
+                            instrucciones_adicionales=instrucciones_adicionales
+                        )
+                        logger.info("✅ Texto generado exitosamente")
+                        logger.info(f"Resultado keys: {resultado.keys() if isinstance(resultado, dict) else 'No es dict'}")
+                    except Exception as e:
+                        logger.error(f"❌ Error al generar texto: {e}", exc_info=True)
+                        st.exception(e)
+                        st.error(f"❌ Error al generar texto: {str(e)}")
+                        raise
+                    
+                    try:
+                        texto_generado = resultado.get("texto", "") if isinstance(resultado, dict) else str(resultado)
+                        logger.info(f"Texto generado (primeros 100 chars): {texto_generado[:100]}")
+                        
+                        palabras = contar_palabras(texto_generado)
+                        logger.info(f"Palabras contadas: {palabras}")
+                        
+                        # Guardar resultado
+                        logger.info("Guardando resultado...")
+                        resultado_id = st.session_state.io_manager.guardar_resultado(
+                            accion="generar",
+                            tema=tema,
+                            resultado=texto_generado,
+                            palabras=palabras,
+                            modelo=f"{config.get('provider', 'openai')}/{config['modelo']}",
+                            config={
+                                "provider": config.get("provider", "openai"),
+                                "temperature": config["temperatura"],
+                                "max_palabras": config["max_palabras"]
+                            }
+                        )
+                        logger.info(f"✅ Resultado guardado con ID: {resultado_id}")
+                        
+                        st.session_state.resultado_actual = texto_generado
+                        st.session_state.resultado_id = resultado_id
+                        logger.info("✅ Session state actualizado")
+                        
+                        st.success("✅ Texto generado exitosamente!")
+                        
+                        # Mostrar información de tokens
+                        if resultado.get("tokens_usados"):
+                            st.info(f"📊 Tokens usados: {resultado['tokens_usados']} | Costo: ${resultado.get('costo', 0):.4f}")
+                        logger.info("✅ Proceso de generación completado")
+                    except Exception as e:
+                        logger.error(f"❌ Error al procesar resultado: {e}", exc_info=True)
+                        st.exception(e)
+                        st.error(f"❌ Error al procesar el resultado: {str(e)}")
+        except Exception as e:
+            logger.error(f"❌ ERROR CRÍTICO en botón Generar: {e}", exc_info=True)
+            st.exception(e)
+            st.error("❌ Ocurrió un error inesperado. Por favor, revisa los logs.")
 
 elif accion == "corregir":
     titulo_con_ayuda("✏️ Corregir Texto", AYUDA_CORREGIR, "corregir", nivel="subheader")
@@ -217,40 +309,71 @@ elif accion == "corregir":
     )
     
     if st.button("🔧 Corregir Texto", type="primary", use_container_width=True):
-        if not texto_original:
-            st.error("❌ Por favor, ingresa un texto para corregir.")
-        else:
-            with st.spinner("⏳ Corrigiendo texto..."):
-                resultado = st.session_state.agent.corregir_texto(
-                    texto=texto_original,
-                    instrucciones_adicionales=instrucciones_adicionales
-                )
-                
-                texto_corregido = resultado["texto"]
-                palabras = contar_palabras(texto_corregido)
-                
-                # Guardar resultado
-                resultado_id = st.session_state.io_manager.guardar_resultado(
-                    accion="corregir",
-                    tema=texto_original[:100] + "..." if len(texto_original) > 100 else texto_original,
-                    resultado=texto_corregido,
-                    palabras=palabras,
-                    modelo=f"{config.get('provider', 'openai')}/{config['modelo']}",
-                    config={
-                        "provider": config.get("provider", "openai"),
-                        "temperature": config["temperatura"],
-                        "instrucciones": instrucciones_adicionales
-                    }
-                )
-                
-                st.session_state.resultado_actual = texto_corregido
-                st.session_state.resultado_id = resultado_id
-                
-                st.success("✅ Texto corregido exitosamente!")
-                
-                # Mostrar información de tokens
-                if resultado.get("tokens_usados"):
-                    st.info(f"📊 Tokens usados: {resultado['tokens_usados']} | Costo: ${resultado.get('costo', 0):.4f}")
+        logger.info("=" * 80)
+        logger.info("BOTÓN PRESIONADO: Corregir Texto")
+        logger.info(f"Texto original (primeros 100 chars): {texto_original[:100] if texto_original else 'None'}")
+        logger.info("=" * 80)
+        
+        try:
+            if not texto_original:
+                logger.warning("⚠️ Texto original vacío")
+                st.error("❌ Por favor, ingresa un texto para corregir.")
+            else:
+                logger.info("Iniciando corrección de texto...")
+                with st.spinner("⏳ Corrigiendo texto..."):
+                    try:
+                        resultado = st.session_state.agent.corregir_texto(
+                            texto=texto_original,
+                            instrucciones_adicionales=instrucciones_adicionales
+                        )
+                        logger.info("✅ Texto corregido exitosamente")
+                    except Exception as e:
+                        logger.error(f"❌ Error al corregir texto: {e}", exc_info=True)
+                        st.exception(e)
+                        st.error(f"❌ Error al corregir texto: {str(e)}")
+                        raise
+                    
+                    try:
+                        texto_corregido = resultado.get("texto", "") if isinstance(resultado, dict) else str(resultado)
+                        logger.info(f"Texto corregido (primeros 100 chars): {texto_corregido[:100]}")
+                        
+                        palabras = contar_palabras(texto_corregido)
+                        logger.info(f"Palabras contadas: {palabras}")
+                        
+                        # Guardar resultado
+                        logger.info("Guardando resultado...")
+                        resultado_id = st.session_state.io_manager.guardar_resultado(
+                            accion="corregir",
+                            tema=texto_original[:100] + "..." if len(texto_original) > 100 else texto_original,
+                            resultado=texto_corregido,
+                            palabras=palabras,
+                            modelo=f"{config.get('provider', 'openai')}/{config['modelo']}",
+                            config={
+                                "provider": config.get("provider", "openai"),
+                                "temperature": config["temperatura"],
+                                "instrucciones": instrucciones_adicionales
+                            }
+                        )
+                        logger.info(f"✅ Resultado guardado con ID: {resultado_id}")
+                        
+                        st.session_state.resultado_actual = texto_corregido
+                        st.session_state.resultado_id = resultado_id
+                        logger.info("✅ Session state actualizado")
+                        
+                        st.success("✅ Texto corregido exitosamente!")
+                        
+                        # Mostrar información de tokens
+                        if resultado.get("tokens_usados"):
+                            st.info(f"📊 Tokens usados: {resultado['tokens_usados']} | Costo: ${resultado.get('costo', 0):.4f}")
+                        logger.info("✅ Proceso de corrección completado")
+                    except Exception as e:
+                        logger.error(f"❌ Error al procesar resultado: {e}", exc_info=True)
+                        st.exception(e)
+                        st.error(f"❌ Error al procesar el resultado: {str(e)}")
+        except Exception as e:
+            logger.error(f"❌ ERROR CRÍTICO en botón Corregir: {e}", exc_info=True)
+            st.exception(e)
+            st.error("❌ Ocurrió un error inesperado. Por favor, revisa los logs.")
 
 elif accion == "resumir":
     titulo_con_ayuda("🔍 Resumir Texto", AYUDA_RESUMIR, "resumir", nivel="subheader")
@@ -269,42 +392,73 @@ elif accion == "resumir":
     )
     
     if st.button("📝 Resumir Texto", type="primary", use_container_width=True):
-        if not texto_original:
-            st.error("❌ Por favor, ingresa un texto para resumir.")
-        else:
-            with st.spinner("⏳ Resumiendo texto..."):
-                resultado = st.session_state.agent.resumir_texto(
-                    texto=texto_original,
-                    max_palabras=config["max_palabras"],
-                    instrucciones_adicionales=instrucciones_adicionales
-                )
-                
-                texto_resumido = resultado["texto"]
-                palabras = contar_palabras(texto_resumido)
-                
-                # Guardar resultado
-                resultado_id = st.session_state.io_manager.guardar_resultado(
-                    accion="resumir",
-                    tema=texto_original[:100] + "..." if len(texto_original) > 100 else texto_original,
-                    resultado=texto_resumido,
-                    palabras=palabras,
-                    modelo=f"{config.get('provider', 'openai')}/{config['modelo']}",
-                    config={
-                        "provider": config.get("provider", "openai"),
-                        "temperature": config["temperatura"],
-                        "max_palabras": config["max_palabras"],
-                        "instrucciones": instrucciones_adicionales
-                    }
-                )
-                
-                st.session_state.resultado_actual = texto_resumido
-                st.session_state.resultado_id = resultado_id
-                
-                st.success("✅ Texto resumido exitosamente!")
-                
-                # Mostrar información de tokens
-                if resultado.get("tokens_usados"):
-                    st.info(f"📊 Tokens usados: {resultado['tokens_usados']} | Costo: ${resultado.get('costo', 0):.4f}")
+        logger.info("=" * 80)
+        logger.info("BOTÓN PRESIONADO: Resumir Texto")
+        logger.info(f"Texto original (primeros 100 chars): {texto_original[:100] if texto_original else 'None'}")
+        logger.info("=" * 80)
+        
+        try:
+            if not texto_original:
+                logger.warning("⚠️ Texto original vacío")
+                st.error("❌ Por favor, ingresa un texto para resumir.")
+            else:
+                logger.info("Iniciando resumen de texto...")
+                with st.spinner("⏳ Resumiendo texto..."):
+                    try:
+                        resultado = st.session_state.agent.resumir_texto(
+                            texto=texto_original,
+                            max_palabras=config["max_palabras"],
+                            instrucciones_adicionales=instrucciones_adicionales
+                        )
+                        logger.info("✅ Texto resumido exitosamente")
+                    except Exception as e:
+                        logger.error(f"❌ Error al resumir texto: {e}", exc_info=True)
+                        st.exception(e)
+                        st.error(f"❌ Error al resumir texto: {str(e)}")
+                        raise
+                    
+                    try:
+                        texto_resumido = resultado.get("texto", "") if isinstance(resultado, dict) else str(resultado)
+                        logger.info(f"Texto resumido (primeros 100 chars): {texto_resumido[:100]}")
+                        
+                        palabras = contar_palabras(texto_resumido)
+                        logger.info(f"Palabras contadas: {palabras}")
+                        
+                        # Guardar resultado
+                        logger.info("Guardando resultado...")
+                        resultado_id = st.session_state.io_manager.guardar_resultado(
+                            accion="resumir",
+                            tema=texto_original[:100] + "..." if len(texto_original) > 100 else texto_original,
+                            resultado=texto_resumido,
+                            palabras=palabras,
+                            modelo=f"{config.get('provider', 'openai')}/{config['modelo']}",
+                            config={
+                                "provider": config.get("provider", "openai"),
+                                "temperature": config["temperatura"],
+                                "max_palabras": config["max_palabras"],
+                                "instrucciones": instrucciones_adicionales
+                            }
+                        )
+                        logger.info(f"✅ Resultado guardado con ID: {resultado_id}")
+                        
+                        st.session_state.resultado_actual = texto_resumido
+                        st.session_state.resultado_id = resultado_id
+                        logger.info("✅ Session state actualizado")
+                        
+                        st.success("✅ Texto resumido exitosamente!")
+                        
+                        # Mostrar información de tokens
+                        if resultado.get("tokens_usados"):
+                            st.info(f"📊 Tokens usados: {resultado['tokens_usados']} | Costo: ${resultado.get('costo', 0):.4f}")
+                        logger.info("✅ Proceso de resumen completado")
+                    except Exception as e:
+                        logger.error(f"❌ Error al procesar resultado: {e}", exc_info=True)
+                        st.exception(e)
+                        st.error(f"❌ Error al procesar el resultado: {str(e)}")
+        except Exception as e:
+            logger.error(f"❌ ERROR CRÍTICO en botón Resumir: {e}", exc_info=True)
+            st.exception(e)
+            st.error("❌ Ocurrió un error inesperado. Por favor, revisa los logs.")
 
 # Mostrar resultado si existe
 if st.session_state.resultado_actual:
@@ -312,23 +466,34 @@ if st.session_state.resultado_actual:
     
     def manejar_feedback(resultado_id: str, aprobado: bool, comentario: str = ""):
         """Maneja el feedback del usuario."""
+        logger.info("=" * 80)
+        logger.info(f"MANEJAR FEEDBACK: resultado_id={resultado_id}, aprobado={aprobado}")
+        logger.info(f"Comentario: {comentario[:100] if comentario else 'None'}")
+        logger.info("=" * 80)
+        
         try:
             # Verificar que el resultado existe antes de procesar
+            logger.info(f"Buscando resultado con ID: {resultado_id}")
             resultado_existente = st.session_state.io_manager.obtener_resultado_por_id(resultado_id)
             if not resultado_existente:
+                logger.warning(f"⚠️ No se encontró resultado con ID: {resultado_id}")
                 st.error(f"❌ No se encontró el resultado con ID: {resultado_id}")
                 return
             
+            logger.info(f"✅ Resultado encontrado, registrando feedback...")
             # Registrar el feedback
             st.session_state.feedback_manager.registrar_feedback(
                 resultado_id=resultado_id,
                 aprobado=aprobado,
                 comentario=comentario
             )
+            logger.info(f"✅ Feedback registrado exitosamente para {resultado_id}")
             
             # No limpiar el resultado cuando se rechaza, 
             # para que el usuario pueda ver el estado de rechazado
         except Exception as e:
+            logger.error(f"❌ ERROR CRÍTICO al registrar feedback: {e}", exc_info=True)
+            st.exception(e)
             st.error(f"❌ Error al registrar feedback: {str(e)}")
     
     render_result_display(
@@ -344,7 +509,12 @@ titulo_con_ayuda("📚 Historial del Mes", AYUDA_HISTORIAL, "historial", nivel="
 
 # Botón para actualizar
 if st.button("🔄 Actualizar Historial", use_container_width=True):
-    st.rerun()
+    logger.info("BOTÓN PRESIONADO: Actualizar Historial")
+    try:
+        st.rerun()
+    except Exception as e:
+        logger.error(f"❌ Error en st.rerun() después de Actualizar Historial: {e}", exc_info=True)
+        st.exception(e)
 
 # Obtener historial completo
 historial_completo = st.session_state.io_manager.obtener_historial_completo()
@@ -448,11 +618,23 @@ def mostrar_registro(registro: Dict, es_rechazado: bool = False, tab_prefix: str
         with col4:
             # Botón de eliminación
             if st.button("🗑️ Eliminar", key=eliminar_key, use_container_width=True, type="secondary"):
-                if st.session_state.io_manager.eliminar_resultado(resultado_id):
-                    st.success("✅ Resultado eliminado")
-                    st.rerun()
-                else:
-                    st.error("❌ Error al eliminar")
+                logger.info(f"BOTÓN PRESIONADO: Eliminar resultado {resultado_id}")
+                try:
+                    if st.session_state.io_manager.eliminar_resultado(resultado_id):
+                        logger.info(f"✅ Resultado {resultado_id} eliminado exitosamente")
+                        st.success("✅ Resultado eliminado")
+                        try:
+                            st.rerun()
+                        except Exception as e:
+                            logger.error(f"❌ Error en st.rerun() después de eliminar: {e}", exc_info=True)
+                            st.exception(e)
+                    else:
+                        logger.warning(f"⚠️ No se pudo eliminar resultado {resultado_id}")
+                        st.error("❌ Error al eliminar")
+                except Exception as e:
+                    logger.error(f"❌ Error al eliminar resultado {resultado_id}: {e}", exc_info=True)
+                    st.exception(e)
+                    st.error(f"❌ Error al eliminar: {str(e)}")
         
         # Contenedor para el resultado con mejor diseño (adaptado automáticamente al tema del sistema)
         st.markdown(
@@ -564,16 +746,26 @@ def render_paginacion_mejorada(pagina_actual: int, total_paginas: int, total_res
     with cols[idx]:
         if st.button("◀️", key=f"{key_prefix}_prev", disabled=(pagina_actual <= 1),
                     help="Página anterior", use_container_width=True):
-            st.session_state[f"{key_prefix}_actual"] = max(1, pagina_actual - 1)
-            st.rerun()
+            logger.info(f"BOTÓN PAGINACIÓN: Anterior (de {pagina_actual} a {max(1, pagina_actual - 1)})")
+            try:
+                st.session_state[f"{key_prefix}_actual"] = max(1, pagina_actual - 1)
+                st.rerun()
+            except Exception as e:
+                logger.error(f"❌ Error en st.rerun() después de página anterior: {e}", exc_info=True)
+                st.exception(e)
     idx += 1
     
     # Botón Primera página (solo si hay más de 5 páginas y no estamos en las primeras)
     if total_paginas > max_pages_visible and pagina_actual > 3:
         with cols[idx]:
             if st.button("⏮️", key=f"{key_prefix}_first", help="Primera página", use_container_width=True):
-                st.session_state[f"{key_prefix}_actual"] = 1
-                st.rerun()
+                logger.info(f"BOTÓN PAGINACIÓN: Primera página (de {pagina_actual} a 1)")
+                try:
+                    st.session_state[f"{key_prefix}_actual"] = 1
+                    st.rerun()
+                except Exception as e:
+                    logger.error(f"❌ Error en st.rerun() después de primera página: {e}", exc_info=True)
+                    st.exception(e)
         idx += 1
     
     # Números de página (SIEMPRE máximo 5)
@@ -601,24 +793,39 @@ def render_paginacion_mejorada(pagina_actual: int, total_paginas: int, total_res
                 # Otras páginas - botones simples
                 if st.button(str(page_num), key=f"{key_prefix}_page_{page_num}", 
                            use_container_width=True, help=f"Página {page_num}"):
-                    st.session_state[f"{key_prefix}_actual"] = int(page_num)
-                    st.rerun()
+                    logger.info(f"BOTÓN PAGINACIÓN: Página {page_num} (de {pagina_actual} a {page_num})")
+                    try:
+                        st.session_state[f"{key_prefix}_actual"] = int(page_num)
+                        st.rerun()
+                    except Exception as e:
+                        logger.error(f"❌ Error en st.rerun() después de página {page_num}: {e}", exc_info=True)
+                        st.exception(e)
         idx += 1
     
     # Botón Última página (solo si hay más de 5 páginas y no estamos en las últimas)
     if total_paginas > max_pages_visible and pagina_actual < total_paginas - 2:
         with cols[idx]:
             if st.button("⏭️", key=f"{key_prefix}_last", help="Última página", use_container_width=True):
-                st.session_state[f"{key_prefix}_actual"] = total_paginas
-                st.rerun()
+                logger.info(f"BOTÓN PAGINACIÓN: Última página (de {pagina_actual} a {total_paginas})")
+                try:
+                    st.session_state[f"{key_prefix}_actual"] = total_paginas
+                    st.rerun()
+                except Exception as e:
+                    logger.error(f"❌ Error en st.rerun() después de última página: {e}", exc_info=True)
+                    st.exception(e)
         idx += 1
     
     # Botón Siguiente
     with cols[idx]:
         if st.button("▶️", key=f"{key_prefix}_next", disabled=(pagina_actual >= total_paginas),
                     help="Página siguiente", use_container_width=True):
-            st.session_state[f"{key_prefix}_actual"] = min(total_paginas, pagina_actual + 1)
-            st.rerun()
+            logger.info(f"BOTÓN PAGINACIÓN: Siguiente (de {pagina_actual} a {min(total_paginas, pagina_actual + 1)})")
+            try:
+                st.session_state[f"{key_prefix}_actual"] = min(total_paginas, pagina_actual + 1)
+                st.rerun()
+            except Exception as e:
+                logger.error(f"❌ Error en st.rerun() después de página siguiente: {e}", exc_info=True)
+                st.exception(e)
 
 # Pestaña: Todos
 with tab1:

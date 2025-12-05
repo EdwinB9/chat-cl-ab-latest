@@ -8,6 +8,7 @@ import os
 from typing import Dict, Optional
 from dotenv import load_dotenv
 from app.components.help_modal import titulo_con_ayuda, AYUDA_CONFIGURACION
+from app.utils.logger import logger
 
 # Cargar variables de entorno al importar el módulo
 load_dotenv()
@@ -47,8 +48,13 @@ def render_sidebar() -> Dict:
         
         # Botón de ayuda visible justo después del título
         if st.button("❓ Ayuda de Configuración", key="help_config_btn", use_container_width=True, type="secondary"):
-            st.session_state.show_config_help = not st.session_state.get("show_config_help", False)
-            st.rerun()
+            logger.info("BOTÓN SIDEBAR: Ayuda de Configuración")
+            try:
+                st.session_state.show_config_help = not st.session_state.get("show_config_help", False)
+                st.rerun()
+            except Exception as e:
+                logger.error(f"❌ Error en st.rerun() después de ayuda config: {e}", exc_info=True)
+                st.exception(e)
         
         # Mostrar ayuda si está activada
         if st.session_state.get("show_config_help", False):
@@ -57,8 +63,13 @@ def render_sidebar() -> Dict:
             from app.components.help_modal import AYUDA_CONFIGURACION
             st.markdown(AYUDA_CONFIGURACION)
             if st.button("✅ Cerrar ayuda", key="close_config_help", use_container_width=True, type="primary"):
-                st.session_state.show_config_help = False
-                st.rerun()
+                logger.info("BOTÓN SIDEBAR: Cerrar ayuda")
+                try:
+                    st.session_state.show_config_help = False
+                    st.rerun()
+                except Exception as e:
+                    logger.error(f"❌ Error en st.rerun() después de cerrar ayuda: {e}", exc_info=True)
+                    st.exception(e)
             st.markdown("---")
         
         # Verificar API keys desde variables de entorno

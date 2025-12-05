@@ -8,6 +8,7 @@ import html
 import uuid
 from typing import List, Optional
 from app.components.help_modal import titulo_con_ayuda, AYUDA_ARCHIVOS_REFERENCIA
+from app.utils.logger import logger
 
 
 def render_file_uploader() -> List[str]:
@@ -245,22 +246,33 @@ Puedes incluir múltiples párrafos, listas, o cualquier formato de texto plano.
                 with col3:
                     # Botón para recargar (forzar recarga completa de todos los archivos)
                     if st.button("🔄 Recargar", key=f"recargar_{archivo_info['nombre']}", use_container_width=True):
-                        # Los archivos ya se cargan automáticamente, solo necesitamos refrescar
-                        st.success(f"✅ Archivos recargados")
-                        st.rerun()
+                        logger.info(f"BOTÓN UPLOADER: Recargar archivo {archivo_info['nombre']}")
+                        try:
+                            # Los archivos ya se cargan automáticamente, solo necesitamos refrescar
+                            st.success(f"✅ Archivos recargados")
+                            st.rerun()
+                        except Exception as e:
+                            logger.error(f"❌ Error en st.rerun() después de recargar: {e}", exc_info=True)
+                            st.exception(e)
                 
                 with col4:
                     # Botón para eliminar
                     eliminar_key = f"eliminar_archivo_{archivo_info['nombre']}"
                     if st.button("🗑️ Eliminar", key=eliminar_key, use_container_width=True, type="secondary"):
-                        # Agregar a la lista de archivos a eliminar
-                        # Inicializar estado (optimizado para Streamlit 1.28+)
-                        st.session_state.setdefault("archivos_a_eliminar", [])
-                        st.session_state.archivos_a_eliminar.append({
-                            'nombre': archivo_info['nombre'],
-                            'ruta': archivo_info['ruta']
-                        })
-                        st.rerun()
+                        logger.info(f"BOTÓN UPLOADER: Eliminar archivo {archivo_info['nombre']}")
+                        try:
+                            # Agregar a la lista de archivos a eliminar
+                            # Inicializar estado (optimizado para Streamlit 1.28+)
+                            st.session_state.setdefault("archivos_a_eliminar", [])
+                            st.session_state.archivos_a_eliminar.append({
+                                'nombre': archivo_info['nombre'],
+                                'ruta': archivo_info['ruta']
+                            })
+                            logger.info(f"✅ Archivo agregado a lista de eliminación")
+                            st.rerun()
+                        except Exception as e:
+                            logger.error(f"❌ Error en st.rerun() después de eliminar archivo: {e}", exc_info=True)
+                            st.exception(e)
     
     # Mostrar total de forma más discreta
     if textos_referencia:

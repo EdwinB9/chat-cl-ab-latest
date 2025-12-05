@@ -4,6 +4,7 @@ Componente para mostrar resultados y gestionar feedback.
 
 import streamlit as st
 from typing import Dict, Optional, Callable
+from app.utils.logger import logger
 from app.components.help_modal import titulo_con_ayuda, AYUDA_FEEDBACK
 
 
@@ -145,17 +146,27 @@ def render_result_display(
             
             # Permitir cambiar el feedback
             if st.button("🔄 Cambiar Feedback", use_container_width=True, key=f"btn_cambiar_{resultado_id}"):
-                # Activar el flag para cambiar feedback
-                st.session_state[cambiar_feedback_key] = True
-                st.rerun()
+                logger.info(f"BOTÓN RESULT_DISPLAY: Cambiar Feedback para {resultado_id}")
+                try:
+                    # Activar el flag para cambiar feedback
+                    st.session_state[cambiar_feedback_key] = True
+                    st.rerun()
+                except Exception as e:
+                    logger.error(f"❌ Error en st.rerun() después de cambiar feedback: {e}", exc_info=True)
+                    st.exception(e)
         else:
             # No hay feedback o se quiere cambiar, mostrar opciones para dar feedback
             # Si se está cambiando, mostrar mensaje
             if quiere_cambiar and feedback_existente:
                 st.info("🔄 Modificando feedback...")
                 if st.button("❌ Cancelar", use_container_width=True, key=f"cancelar_{resultado_id}"):
-                    st.session_state[cambiar_feedback_key] = False
-                    st.rerun()
+                    logger.info(f"BOTÓN RESULT_DISPLAY: Cancelar cambio de feedback para {resultado_id}")
+                    try:
+                        st.session_state[cambiar_feedback_key] = False
+                        st.rerun()
+                    except Exception as e:
+                        logger.error(f"❌ Error en st.rerun() después de cancelar: {e}", exc_info=True)
+                        st.exception(e)
             
             col1, col2 = st.columns(2)
             
@@ -175,33 +186,49 @@ def render_result_display(
             
             with col1:
                 if st.button("👍 Me gusta", use_container_width=True, type="primary", key=f"me_gusta_{resultado_id}"):
-                    # Guardar en session_state para evitar pérdida de estado
-                    st.session_state[f"feedback_guardado_{resultado_id}"] = {
-                        "aprobado": True,
-                        "comentario": comentario
-                    }
-                    on_feedback(resultado_id, aprobado=True, comentario=comentario)
-                    # Limpiar el flag de cambiar feedback
-                    if cambiar_feedback_key in st.session_state:
-                        del st.session_state[cambiar_feedback_key]
-                    st.success("¡Feedback registrado! ✅")
-                    # Usar st.rerun() pero el estado ya está guardado
-                    st.rerun()
+                    logger.info(f"BOTÓN RESULT_DISPLAY: Me gusta para {resultado_id}")
+                    try:
+                        # Guardar en session_state para evitar pérdida de estado
+                        st.session_state[f"feedback_guardado_{resultado_id}"] = {
+                            "aprobado": True,
+                            "comentario": comentario
+                        }
+                        logger.info(f"✅ Feedback guardado en session_state para {resultado_id}")
+                        on_feedback(resultado_id, aprobado=True, comentario=comentario)
+                        logger.info(f"✅ Callback on_feedback ejecutado para {resultado_id}")
+                        # Limpiar el flag de cambiar feedback
+                        if cambiar_feedback_key in st.session_state:
+                            del st.session_state[cambiar_feedback_key]
+                        st.success("¡Feedback registrado! ✅")
+                        # Usar st.rerun() pero el estado ya está guardado
+                        st.rerun()
+                    except Exception as e:
+                        logger.error(f"❌ ERROR CRÍTICO en botón Me gusta: {e}", exc_info=True)
+                        st.exception(e)
+                        st.error(f"❌ Error al registrar feedback: {str(e)}")
             
             with col2:
                 if st.button("👎 No me gusta", use_container_width=True, key=f"no_me_gusta_{resultado_id}"):
-                    # Guardar en session_state para evitar pérdida de estado
-                    st.session_state[f"feedback_guardado_{resultado_id}"] = {
-                        "aprobado": False,
-                        "comentario": comentario
-                    }
-                    on_feedback(resultado_id, aprobado=False, comentario=comentario)
-                    # Limpiar el flag de cambiar feedback
-                    if cambiar_feedback_key in st.session_state:
-                        del st.session_state[cambiar_feedback_key]
-                    st.info("Resultado movido a rechazados. Puedes verlo en el historial.")
-                    # No limpiar el resultado inmediatamente, dejar que se muestre el estado
-                    st.rerun()
+                    logger.info(f"BOTÓN RESULT_DISPLAY: No me gusta para {resultado_id}")
+                    try:
+                        # Guardar en session_state para evitar pérdida de estado
+                        st.session_state[f"feedback_guardado_{resultado_id}"] = {
+                            "aprobado": False,
+                            "comentario": comentario
+                        }
+                        logger.info(f"✅ Feedback guardado en session_state para {resultado_id}")
+                        on_feedback(resultado_id, aprobado=False, comentario=comentario)
+                        logger.info(f"✅ Callback on_feedback ejecutado para {resultado_id}")
+                        # Limpiar el flag de cambiar feedback
+                        if cambiar_feedback_key in st.session_state:
+                            del st.session_state[cambiar_feedback_key]
+                        st.info("Resultado movido a rechazados. Puedes verlo en el historial.")
+                        # No limpiar el resultado inmediatamente, dejar que se muestre el estado
+                        st.rerun()
+                    except Exception as e:
+                        logger.error(f"❌ ERROR CRÍTICO en botón No me gusta: {e}", exc_info=True)
+                        st.exception(e)
+                        st.error(f"❌ Error al registrar feedback: {str(e)}")
     
     # Botones de descarga (el subheader se adapta automáticamente al tema vía CSS)
     st.divider()
