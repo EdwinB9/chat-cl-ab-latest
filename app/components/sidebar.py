@@ -5,6 +5,8 @@ Muestra configuración y opciones del usuario.
 
 import streamlit as st
 import os
+import base64
+from pathlib import Path
 from typing import Dict, Optional
 from app.components.help_modal import titulo_con_ayuda, AYUDA_CONFIGURACION
 from app.utils.logger import logger
@@ -12,6 +14,23 @@ from app.utils.env_loader import load_environment_variables, get_env
 
 # Cargar variables de entorno al importar el módulo (compatible con .env y Streamlit Secrets)
 load_environment_variables()
+
+
+def obtener_ruta_logo():
+    """Busca el logo de Casa Limpia en ubicaciones comunes."""
+    project_root = Path(__file__).parent.parent.parent
+    posibles_rutas = [
+        project_root / "static" / "logo.png",
+        project_root / "static" / "casa_limpia_logo.png",
+        project_root / "static" / "logo.jpg",
+        project_root / "static" / "casa_limpia_logo.jpg",
+        project_root / "static" / "logo.svg",
+        project_root / "static" / "casa_limpia_logo.svg",
+    ]
+    for ruta in posibles_rutas:
+        if ruta.exists():
+            return ruta
+    return None
 
 
 def render_sidebar() -> Dict:
@@ -29,6 +48,25 @@ def render_sidebar() -> Dict:
     border_color = "#00acc1"  # Turquesa principal
     
     with st.sidebar:
+        # Mostrar logo de Casa Limpia si existe
+        logo_path = obtener_ruta_logo()
+        if logo_path:
+            logo_ext = logo_path.suffix.lower()
+            if logo_ext in ['.png', '.jpg', '.jpeg']:
+                with open(logo_path, "rb") as f:
+                    logo_data = base64.b64encode(f.read()).decode()
+                logo_mime = "image/png" if logo_ext == '.png' else "image/jpeg"
+                logo_html = f'<div style="text-align: center; margin-bottom: 1.5rem; animation: fadeIn 0.3s ease-out;"><img src="data:{logo_mime};base64,{logo_data}" style="max-height: 120px; width: auto; max-width: 100%;" alt="Casa Limpia Logo"></div>'
+            elif logo_ext == '.svg':
+                with open(logo_path, "r", encoding="utf-8") as f:
+                    logo_svg = f.read()
+                logo_html = f'<div style="text-align: center; margin-bottom: 1.5rem; animation: fadeIn 0.3s ease-out; max-height: 120px; width: auto; display: flex; justify-content: center; align-items: center;">{logo_svg}</div>'
+            else:
+                logo_html = ""
+            
+            if logo_html:
+                st.markdown(logo_html, unsafe_allow_html=True)
+        
         # Título mejorado del sidebar (adaptado al tema Casa Limpia)
         st.markdown(
             f"""

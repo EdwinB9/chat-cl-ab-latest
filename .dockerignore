@@ -1,136 +1,71 @@
-# Excluir TODO lo que no sea esencial para la aplicación
-
-# Entorno virtual (NUNCA incluir)
+# Excluir entorno virtual (se instala en el contenedor)
 venv/
 env/
 .venv/
 ENV/
-**/venv/
-**/env/
-**/.venv/
 
-# Archivos de Python compilados
+# Excluir archivos de Python compilados
 __pycache__/
-**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-*.pyc
-*.pyo
-*.pyd
 
-# Archivos de build y distribución
+# Excluir archivos de build
 build/
 dist/
 *.egg-info/
 .eggs/
-*.egg
-.installed.cfg
-*.whl
 
-# Archivos de desarrollo e IDE
+# Excluir archivos de desarrollo
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.project
-.pydevproject
-.settings/
 
-# Variables de entorno
+# Excluir variables de entorno
 .env
-.env.*
 .env.local
-*.env
+.env.*.local
 
-# Datos locales (se crearán en el contenedor)
-data/resultados/
-data/rechazados/
-data/archivos_referencia/
-data/**/*.json
-data/**/*.txt
+# Excluir datos locales (se crearán en el contenedor)
+data/resultados/*.json
+data/rechazados/*.json
+data/archivos_referencia/*
 
-# Logs
+# Mantener estructura de directorios pero sin datos
+!data/resultados/.gitkeep
+!data/rechazados/.gitkeep
+
+# Excluir logs
 *.log
-logs/
-*.log.*
 
-# Archivos del sistema
+# Excluir archivos del sistema
 .DS_Store
 Thumbs.db
-desktop.ini
-$RECYCLE.BIN/
 
-# Archivos de Git
+# Excluir archivos de Git
 .git/
 .gitignore
-.gitattributes
-.gitmodules
 
-# Documentación (opcional, excluir para reducir tamaño)
-GUIA_DEPLOYMENT.md
-DEPLOYMENT_RAPIDO.md
-SOLUCION_RAILWAY.md
-INSTRUCCIONES.md
-README.md
-*.md
+# Excluir documentación de desarrollo (opcional, puedes mantenerla)
+# GUIA_DEPLOYMENT.md
+# DEPLOYMENT_RAPIDO.md
+# INSTRUCCIONES.md
 
-# Archivos de ejemplo y configuración local
+# Excluir archivos de ejemplo
 example.env
 .secrets.toml.example
-*.example
-*.sample
 
-# Scripts de desarrollo local
+# Excluir scripts de desarrollo local
 run.bat
 run.sh
 run_streamlit.py
 check_*.py
-*.bat
-*.sh
 
-# Directorios estáticos y templates (si están vacíos o no son esenciales)
-static/
+# Excluir directorios estáticos vacíos (si no tienen contenido importante)
+static/css/
+static/js/
 templates/
-templates/**/*
-
-# Archivos de configuración de desarrollo
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.cache/
-nosetests.xml
-coverage.xml
-*.cover
-
-# Archivos temporales
-*.tmp
-*.temp
-*.bak
-*.backup
-*~
-
-# Archivos de Jupyter
-.ipynb_checkpoints/
-*.ipynb
-
-# Archivos de Node (si hay alguno)
-node_modules/
-npm-debug.log
-yarn-error.log
-
-# Archivos de Python packaging
-MANIFEST
-MANIFEST.in
-setup.py
-setup.cfg
-pip-log.txt
-
-# Archivos de Railway
-.railway/
-railway.json
-nixpacks.toml
 

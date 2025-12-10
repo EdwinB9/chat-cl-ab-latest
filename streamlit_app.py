@@ -14,3 +14,5 @@ if str(project_root) not in sys.path:
 # Importar y ejecutar la aplicación principal
 from app.main import *
 
+
+

@@ -28,3 +28,5 @@ markdown>=3.4.0
 # - langchain-groq, langchain-together, langchain-cohere, langchain-huggingface (solo si los necesitas)
 # - cohere (no necesario como paquete separado)
 
+
+

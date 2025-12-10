@@ -75,20 +75,71 @@ except Exception as e:
     st.error(f"Error al aplicar estilos: {str(e)}")
     # Continuar sin estilos si hay un error
 
+# Función para obtener la ruta del robot
+def obtener_ruta_logo():
+    """Busca el robot.png en ubicaciones comunes."""
+    posibles_rutas = [
+        project_root / "static" / "robot.png",
+        project_root / "static" / "robot.jpg",
+        project_root / "static" / "robot.svg",
+    ]
+    for ruta in posibles_rutas:
+        if ruta.exists():
+            return ruta
+    return None
+
+# Obtener ruta del logo
+logo_path = obtener_ruta_logo()
+
 # Título principal con mejor diseño (adaptado automáticamente al tema del sistema)
-st.markdown(
-    """
-    <div style="text-align: center; padding: 2rem 0; margin-bottom: 2rem; animation: fadeIn 0.3s ease-out;">
-        <h1 id="main-title" style="font-size: 2.5rem; margin-bottom: 0.5rem;">
-            🧠 Chatbot CL-AB
-        </h1>
-        <p id="main-subtitle" style="font-size: 1.1rem; margin: 0;">
-            Genera, corrige y resume textos empresariales con IA
-        </p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+if logo_path:
+    # Si hay logo, mostrarlo junto al título
+    import base64
+    from pathlib import Path
+    
+    # Leer el logo y convertirlo a base64
+    logo_ext = logo_path.suffix.lower()
+    if logo_ext in ['.png', '.jpg', '.jpeg']:
+        with open(logo_path, "rb") as f:
+            logo_data = base64.b64encode(f.read()).decode()
+        logo_mime = "image/png" if logo_ext == '.png' else "image/jpeg"
+        logo_html = f'<img src="data:{logo_mime};base64,{logo_data}" style="max-height: 180px; width: auto; margin-bottom: 1.5rem; animation: fadeIn 0.3s ease-out;" alt="Robot Logo">'
+    elif logo_ext == '.svg':
+        with open(logo_path, "r", encoding="utf-8") as f:
+            logo_svg = f.read()
+        logo_html = f'<div style="max-height: 180px; width: auto; margin-bottom: 1.5rem; animation: fadeIn 0.3s ease-out; display: flex; justify-content: center; align-items: center;">{logo_svg}</div>'
+    else:
+        logo_html = ""
+    
+    st.markdown(
+        f"""
+        <div style="text-align: center; padding: 2rem 0; margin-bottom: 2rem; animation: fadeIn 0.3s ease-out;">
+            {logo_html}
+            <h1 id="main-title" style="font-size: 2.5rem; margin-bottom: 0.5rem;">
+                🧠 Chatbot CL-AB
+            </h1>
+            <p id="main-subtitle" style="font-size: 1.1rem; margin: 0;">
+                Genera, corrige y resume textos empresariales con IA
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    # Si no hay logo, mostrar solo el título (como antes)
+    st.markdown(
+        """
+        <div style="text-align: center; padding: 2rem 0; margin-bottom: 2rem; animation: fadeIn 0.3s ease-out;">
+            <h1 id="main-title" style="font-size: 2.5rem; margin-bottom: 0.5rem;">
+                🧠 Chatbot CL-AB
+            </h1>
+            <p id="main-subtitle" style="font-size: 1.1rem; margin: 0;">
+                Genera, corrige y resume textos empresariales con IA
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 # Estilos CSS del título
 st.markdown(

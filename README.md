@@ -156,7 +156,36 @@ MAX_REQUESTS_PER_MINUTE=30
 - Puedes configurar solo las API keys que vayas a usar (mínimo una)
 - La aplicación solo mostrará los proveedores que tengan API key configurada
 
-### 4️⃣ Ejecutar la Aplicación
+### 4️⃣ Agregar Logo de Casa Limpia (Opcional)
+
+Para personalizar la aplicación con el logo de Casa Limpia, coloca el archivo del logo en la carpeta `static/` con uno de los siguientes nombres:
+
+- `logo.png` o `casa_limpia_logo.png` (recomendado)
+- `logo.jpg` o `casa_limpia_logo.jpg`
+- `logo.svg` o `casa_limpia_logo.svg`
+
+**Ubicación del archivo:**
+```
+/static/
+└── logo.png  (o cualquiera de los nombres mencionados)
+```
+
+El logo se mostrará automáticamente:
+- En el título principal de la aplicación (arriba del título "Chatbot CL-AB")
+- En el sidebar (arriba de la sección de configuración)
+
+**Formatos soportados:**
+- PNG (recomendado para mejor calidad)
+- JPG/JPEG
+- SVG (escalable, ideal para diferentes tamaños)
+
+**Tamaño recomendado:**
+- Para el título principal: máximo 80px de altura
+- Para el sidebar: máximo 60px de altura
+
+Si no colocas ningún logo, la aplicación funcionará normalmente sin mostrar ningún logo.
+
+### 5️⃣ Ejecutar la Aplicación
 
 **Importante**: Asegúrate de estar en el directorio raíz del proyecto al ejecutar el comando.
 
